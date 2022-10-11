@@ -1,20 +1,24 @@
 from aiogram import types, Bot, Router, F
-from aiogram.utils.deep_linking import create_start_link, decode_payload
+from aiogram.utils.deep_linking import create_start_link
+from aiogram.filters import Command
+
 from messages.inGroup import *
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from buttons import generate_refferal_button
 
 router = Router()
 
-@router.message(F.content_type.in_({types.ContentType.NEW_CHAT_MEMBERS})) #, types.ContentType.LEFT_CHAT_MEMBER
+@router.message(F.content_type.in_({types.ContentType.NEW_CHAT_MEMBERS}))
 async def check_channel(message: types.Message, bot: Bot):
     bot_id = (await bot.get_me()).id
-    link = await create_start_link(bot, payload = str(message.chat.id))
-    builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(
-        text = "Нажми меня",
-        url = link
-    ))
+    link = await create_start_link(bot, payload = str(message.chat.id), encode=True)
+    keyboard = await generate_refferal_button(link)
     if message.new_chat_members[0].id == bot_id:
-        await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=builder.as_markup())
+        return await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=keyboard.as_markup())
     else:
-        await message.answer(ADD_MEMBER.format(username = message.new_chat_members[0].full_name, id = message.new_chat_members[0].id), parse_mode="HTML", reply_markup=builder.as_markup())
+        return await message.answer(ADD_MEMBER.format(username = message.new_chat_members[0].full_name, id = message.new_chat_members[0].id), parse_mode="HTML", reply_markup=keyboard.as_markup())
+
+@router.message(Command(commands=["start"]) & F.content_type.in_({types.ContentType.NEW_CHAT_MEMBERS}))
+async def check_channel(message: types.Message, bot: Bot):
+    link = await create_start_link(bot, payload = str(message.chat.id), encode=True)
+    keyboard = await generate_refferal_button(link)
+    return await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=keyboard.as_markup())

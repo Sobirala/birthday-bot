@@ -1,13 +1,31 @@
-from aiogram import types, Router
-from messages.inGroup import *
-from aiogram.filters import Command
+from typing import Any
+from aiogram import Bot, types, Router
+from aiogram.filters import Command, CommandObject
+from aiogram.utils.deep_linking import decode_payload
+from aiogram.fsm.context import FSMContext
+
+from messages.inPrivate import *
+from states import *
 
 router = Router()
 
 @router.message(Command(commands=["start"]))
-async def cmd_send_welcome(message: types.Message):
-    await message.reply("Hi!\nI'm EchoBot!\nPowered by aiogram.")
+async def start(message: types.Message, bot: Bot, database: Any, state: FSMContext, command: CommandObject):
+    if command.args:
+        await state.set_state(Form.year)
+        chat = await bot.get_chat(decode_payload(command.args))
+        await message.answer(ADD.format(groupname = chat.title), parse_mode="HTML")
+        await message.answer(YEAR)
+        return
+
+@router.message(Form.year)
+async def get_year(message: types.Message, state: FSMContext):
+    await state.update_data(year=message.text)
+    await state.set_state(Form.month)
+
+
+    
 
 @router.message(Command(commands=["help"]))
-async def cmd_send_welcome(message: types.Message):
-    await message.reply("Hi!\nI'm EchoBot!\nPowered by aiogram.")
+async def help(message: types.Message):
+    return await message.reply(HELP)
