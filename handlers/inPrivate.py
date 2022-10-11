@@ -1,5 +1,5 @@
 from typing import Any
-from aiogram import Bot, types, Router
+from aiogram import Bot, types, Router, F
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.deep_linking import decode_payload
 from aiogram.fsm.context import FSMContext
@@ -9,7 +9,7 @@ from states import *
 
 router = Router()
 
-@router.message(Command(commands=["start"]))
+@router.message(Command(commands=["start"]), F.chat.type.in_({"private"}))
 async def start(message: types.Message, bot: Bot, database: Any, state: FSMContext, command: CommandObject):
     if command.args:
         await state.set_state(Form.year)
@@ -18,14 +18,11 @@ async def start(message: types.Message, bot: Bot, database: Any, state: FSMConte
         await message.answer(YEAR)
         return
 
+@router.message(Command(commands=["help"]))
+async def help(message: types.Message):
+    return await message.reply(HELP)
+
 @router.message(Form.year)
 async def get_year(message: types.Message, state: FSMContext):
     await state.update_data(year=message.text)
     await state.set_state(Form.month)
-
-
-    
-
-@router.message(Command(commands=["help"]))
-async def help(message: types.Message):
-    return await message.reply(HELP)
