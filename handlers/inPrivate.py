@@ -29,7 +29,9 @@ GENDERS = ["Ч", "Ж", "Підрила"]
 async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject):
     if command.args:
         await state.set_state(Form.year)
-        chat = await bot.get_chat(decode_payload(command.args))
+        group_id = decode_payload(command.args)
+        await state.update_data({"group_id": group_id})
+        chat = await bot.get_chat(group_id)
         await message.answer(ADD.format(groupname = chat.title), parse_mode="HTML")
         await message.answer(YEAR)
         return
@@ -64,12 +66,14 @@ async def get_month(message: types.Message, state: FSMContext):
     print(day.isdigit(), int(day) > 0, int(day) <= MONTHS[data["month"]]["days"])
     if not any([day.isdigit(), int(day) > 0, int(day) <= MONTHS[data["month"]]["days"]]):
         return await message.answer(NOT_DAY)
-    await state.update_data(month = message.text)
+    await state.update_data(day = message.text)
     await state.set_state(Form.gender)
-    return await message.answer(GENDER, reply_markup= (await get_gender_keyboard()))
+    return await message.answer(GENDER, reply_markup= (await get_gender_keyboard(GENDERS)))
 
 @router.message(Form.gender)
 async def get_month(message: types.Message, state: FSMContext):
     gender = message.text
     if gender not in GENDERS:
         return await message.answer(NOT_GENDER)
+    await state.update_data(gender = message.text)
+    await state.set_state(Form.town)
