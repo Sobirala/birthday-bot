@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher
 
 from config import *
 from handlers import inGroup, inPrivate
+from middlewares import GetDBVariable
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,6 +15,7 @@ async def main():
     dp = Dispatcher()
     client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
     db = client.birthdays
+    dp.message.middleware(GetDBVariable(db))
 
     dp.include_router(inPrivate.router)
     dp.include_router(inGroup.router)
