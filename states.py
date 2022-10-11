@@ -4,4 +4,5 @@ class Form(StatesGroup):
     year = State()
     month = State()
     day = State()
+    gender = State()
     town = State()
