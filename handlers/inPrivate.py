@@ -1,15 +1,19 @@
 from typing import Any
 from aiogram import Bot, types, Router, F
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import Command, CommandObject, Text
 from aiogram.utils.deep_linking import decode_payload
 from aiogram.fsm.context import FSMContext
 from datetime import date
+from aiogram.types.reply_keyboard_remove import ReplyKeyboardRemove
 
 from messages.inPrivate import *
 from states import *
-from buttons import get_gender_keyboard, get_month_keyboard
+from buttons import get_gender_keyboard, get_month_keyboard, submit
+from middlewares import Throtled
 
 router = Router()
+router.message.filter(F.chat.type.in_({"private"}))
+router.message.middleware(Throtled())
 
 MONTHS = {"Січень": {"number": 1, "days": 31}, 
           "Лютий": {"number": 2, "days": 28}, 
@@ -25,7 +29,7 @@ MONTHS = {"Січень": {"number": 1, "days": 31},
           "Грудень": {"number": 12, "days": 31}}
 GENDERS = ["Ч", "Ж", "Підрила"]
 
-@router.message(Command(commands=["start"]), F.chat.type.in_({"private"}))
+@router.message(Command(commands=["start"]))
 async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject):
     if command.args:
         await state.set_state(Form.year)
@@ -36,9 +40,19 @@ async def start(message: types.Message, bot: Bot, state: FSMContext, command: Co
         await message.answer(YEAR)
         return
 
-@router.message(Command(commands=["help"]), F.chat.type.in_({"private"}))
+@router.message(Command(commands=["help"]))
 async def help(message: types.Message):
-    return await message.reply(HELP)
+    return await message.answer(HELP)
+
+@router.message(Command(commands=["reset"]))
+async def reset(message: types.Message):
+    return await message.answer(RESET, reply_markup=submit)
+
+@router.callback_query(Text("submit"))
+async def submit_change(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
+    await state.clear()
+    await state.set_state(Form.year)
+    await bot.send_message(callback.from_user.id, YEAR, reply_markup=ReplyKeyboardRemove())
 
 @router.message(Form.year)
 async def get_year(message: types.Message, state: FSMContext):
@@ -57,10 +71,10 @@ async def get_month(message: types.Message, state: FSMContext):
         return await message.answer(NOT_MONTH)
     await state.update_data(month = message.text)
     await state.set_state(Form.day)
-    return await message.answer(DAY)
+    return await message.answer(DAY, reply_markup=ReplyKeyboardRemove())
 
 @router.message(Form.day)
-async def get_month(message: types.Message, state: FSMContext):
+async def get_day(message: types.Message, state: FSMContext):
     day = message.text
     data = await state.get_data()
     print(day.isdigit(), int(day) > 0, int(day) <= MONTHS[data["month"]]["days"])
@@ -71,9 +85,15 @@ async def get_month(message: types.Message, state: FSMContext):
     return await message.answer(GENDER, reply_markup= (await get_gender_keyboard(GENDERS)))
 
 @router.message(Form.gender)
-async def get_month(message: types.Message, state: FSMContext):
+async def get_gender(message: types.Message, state: FSMContext):
     gender = message.text
     if gender not in GENDERS:
         return await message.answer(NOT_GENDER)
     await state.update_data(gender = message.text)
     await state.set_state(Form.town)
+    await message.answer(TOWN, reply_markup=ReplyKeyboardRemove())
+
+@router.message(Form.town)
+async def get_town(message: types.Message, state: FSMContext):
+    await state.update_data(town = message.text)
+    await state.set_state(Form.confirmation)
