@@ -1,19 +1,21 @@
 import asyncio
+from distutils.command.config import config
 import logging
 
 import motor.motor_asyncio
 from aiogram import Bot, Dispatcher
 
-from config import *
+from config import TGBotConfig
 from handlers import inGroup, inPrivate
 from middlewares import GetDBVariable
 
 logging.basicConfig(level=logging.INFO)
 
 async def main():
-    bot = Bot(token=API_TOKEN)
+    config = TGBotConfig()
+    bot = Bot(token=config.TOKEN)
     dp = Dispatcher()
-    client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
+    client = motor.motor_asyncio.AsyncIOMotorClient(config.MONGO_URL)
     db = client.birthdays
     dp.message.middleware(GetDBVariable(db))
 

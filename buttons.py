@@ -20,7 +20,12 @@ async def get_gender_keyboard(genders: List[str]):
         KeyboardButton(text = genders[0]),
         KeyboardButton(text = genders[1])
     )
-    builder.row(
-        KeyboardButton(text = genders[2])
-    )
+    if len(genders) >= 3:
+        builder.row(
+            KeyboardButton(text = genders[2])
+        )
     return builder.as_markup(resize_keyboard=True)
+
+submit =  InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Змінити дані", callback_data="submit")]
+])
