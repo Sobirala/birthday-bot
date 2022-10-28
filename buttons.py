@@ -1,5 +1,5 @@
 from typing import List
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup, InlineKeyboardButton, KeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 async def generate_refferal_button(url: str):
@@ -28,4 +28,8 @@ async def get_gender_keyboard(genders: List[str]):
 
 submit =  InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Змінити дані", callback_data="submit")]
+])
+
+confirm_keyboard = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text="Так"), KeyboardButton(text="Ні")]
 ])

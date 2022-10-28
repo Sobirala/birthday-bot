@@ -1,14 +1,23 @@
 from typing import Any
+from zoneinfo import ZoneInfo
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command, CommandObject, Text
 from aiogram.utils.deep_linking import decode_payload
 from aiogram.fsm.context import FSMContext
 from datetime import date
 from aiogram.types.reply_keyboard_remove import ReplyKeyboardRemove
+from geopy.geocoders import GoogleV3
+from geopy.adapters import AioHTTPAdapter
+from functools import partial
+import aiohttp
+from datetime import datetime
+from babel.dates import format_datetime
+import logging
 
+from config import get_config_variable
 from messages.inPrivate import *
 from states import *
-from buttons import get_gender_keyboard, get_month_keyboard, submit
+from buttons import get_gender_keyboard, get_month_keyboard, submit, confirm_keyboard
 from middlewares import Throtled
 
 router = Router()
@@ -27,7 +36,7 @@ MONTHS = {"Січень": {"number": 1, "days": 31},
           "Жовтень": {"number": 10, "days": 31}, 
           "Листопад": {"number": 11, "days": 30}, 
           "Грудень": {"number": 12, "days": 31}}
-GENDERS = ["Ч", "Ж", "Підрила"]
+GENDERS = {"Ч": "чоловіча", "Ж": "жіноча"}
 
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject):
@@ -37,8 +46,8 @@ async def start(message: types.Message, bot: Bot, state: FSMContext, command: Co
         await state.update_data({"group_id": group_id})
         chat = await bot.get_chat(group_id)
         await message.answer(ADD.format(groupname = chat.title), parse_mode="HTML")
-        await message.answer(YEAR)
-        return
+        return await message.answer(YEAR)
+    return await message.answer(START)
 
 @router.message(Command(commands=["help"]))
 async def help(message: types.Message):
@@ -77,23 +86,65 @@ async def get_month(message: types.Message, state: FSMContext):
 async def get_day(message: types.Message, state: FSMContext):
     day = message.text
     data = await state.get_data()
-    print(day.isdigit(), int(day) > 0, int(day) <= MONTHS[data["month"]]["days"])
     if not any([day.isdigit(), int(day) > 0, int(day) <= MONTHS[data["month"]]["days"]]):
         return await message.answer(NOT_DAY)
     await state.update_data(day = message.text)
     await state.set_state(Form.gender)
-    return await message.answer(GENDER, reply_markup= (await get_gender_keyboard(GENDERS)))
+    return await message.answer(GENDER, reply_markup= (await get_gender_keyboard(list(GENDERS.keys()))))
 
 @router.message(Form.gender)
 async def get_gender(message: types.Message, state: FSMContext):
     gender = message.text
-    if gender not in GENDERS:
+    if gender not in GENDERS.keys():
         return await message.answer(NOT_GENDER)
-    await state.update_data(gender = message.text)
-    await state.set_state(Form.town)
-    await message.answer(TOWN, reply_markup=ReplyKeyboardRemove())
+    await state.update_data(gender = GENDERS[message.text])
+    await state.set_state(Form.confirm)
+
+    data = await state.get_data()
+    return await message.answer(SUCCESS_USER.format(day=data["day"], month=data["month"], year=data["year"], gender=data["gender"]), reply_markup=confirm_keyboard)
 
 @router.message(Form.town)
 async def get_town(message: types.Message, state: FSMContext):
     await state.update_data(town = message.text)
-    await state.set_state(Form.confirmation)
+    API_TOKEN = get_config_variable("GOOGLE_TOKEN")
+    async with GoogleV3(
+        api_key=API_TOKEN,
+        user_agent="birthday_bot",
+        adapter_factory=AioHTTPAdapter,
+    ) as geolocator:
+        geocode = partial(geolocator.geocode, language="uk")
+        address = await geocode(message.text)
+    if address == None:
+        return await message.answer(NOT_TOWN, reply_markup=ReplyKeyboardRemove())
+    url = "http://timezonefinder.michelfe.it/api/{}_{}_{}".format(0, address.longitude, address.latitude)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            try:
+                tz_info = await response.json(content_type='application/javascript')
+                today = datetime.today().replace(tzinfo=ZoneInfo(tz_info['tz_name']))
+                date = format_datetime(today, "d MMMM Y", locale='uk_UA')
+                time = format_datetime(today, "H:mm")
+            except Exception as e:
+                logging.error(e)
+                date = "ERROR"
+                time = "ERROR"
+    await state.set_state(Form.confirm)
+    await message.answer(SUCCESS_TOWN.format(address=address, date=date, time=time), reply_markup=confirm_keyboard)
+
+@router.message(Form.confirm)
+async def confirm(message: types.Message, state: FSMContext, bot: Bot, database: Any):
+    if message.text not in ['Так', 'Ні']:
+        return await message.answer(NOT_SUCCESS)
+    data = await state.get_data()
+    if 'town' in data:
+        if message.text == "Ні":
+            await state.set_state(Form.town)
+            return await message.answer(NOT_SUCCESS_TOWN, reply_markup=ReplyKeyboardRemove())
+        chat = await bot.get_chat(data["group_id"])
+        return await message.answer(SUCCESS_ADD.format(groupname=chat.title), reply_markup=ReplyKeyboardRemove())
+    elif 'gender' in data:
+        if message.text == "Ні":
+            await state.set_state(Form.year)
+            return await message.answer(NOT_SUCCESS_USER, reply_markup=ReplyKeyboardRemove())
+        await state.set_state(Form.town)
+        await message.answer(TOWN, reply_markup=ReplyKeyboardRemove())
