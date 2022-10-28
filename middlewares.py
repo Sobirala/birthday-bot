@@ -26,9 +26,9 @@ class Throtled(BaseMiddleware):
         event: types.Message,
         data: Dict[str, Any]
     ) -> Any:
-        print(handler)
-        print(event)
-        print(data)
+        # print(handler)
+        # print(event)
+        # print(data)
         return await handler(event, data)
 
 # class ThrottlingMiddleware(BaseMiddleware):

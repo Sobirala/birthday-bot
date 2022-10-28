@@ -12,7 +12,3 @@ class TGBotConfig():
         GOOGLE_TOKEN: Final = environ["GOOGLE_TOKEN"]
     except Exception as key:
         raise RuntimeError(f"{key} must be defined!")
-
-async def get_config_variable(varname):
-    config = TGBotConfig()
-    return getattr(config, varname)

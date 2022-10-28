@@ -1,20 +1,20 @@
+from tokenize import group
 from typing import Any
 from zoneinfo import ZoneInfo
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command, CommandObject, Text
 from aiogram.utils.deep_linking import decode_payload
 from aiogram.fsm.context import FSMContext
-from datetime import date
+from datetime import date, datetime
 from aiogram.types.reply_keyboard_remove import ReplyKeyboardRemove
 from geopy.geocoders import GoogleV3
 from geopy.adapters import AioHTTPAdapter
 from functools import partial
 import aiohttp
-from datetime import datetime
 from babel.dates import format_datetime
 import logging
 
-from config import get_config_variable
+from config import TGBotConfig
 from messages.inPrivate import *
 from states import *
 from buttons import get_gender_keyboard, get_month_keyboard, submit, confirm_keyboard
@@ -39,12 +39,30 @@ MONTHS = {"Січень": {"number": 1, "days": 31},
 GENDERS = {"Ч": "чоловіча", "Ж": "жіноча"}
 
 @router.message(Command(commands=["start"]))
-async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject):
+async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
     if command.args:
-        await state.set_state(Form.year)
         group_id = decode_payload(command.args)
+        await state.clear()
         await state.update_data({"group_id": group_id})
+        group = await database.groups.find_one({"_id": int(group_id)}, {"users": 1})
+        if group == None:
+            return await message.answer("Такої групи не існує або невірне посилання!")
         chat = await bot.get_chat(group_id)
+        for i in group["users"]:
+            if i["_id"] == message.chat.id:
+                return await message.answer(YET_ADD.format(groupname = chat.title))
+        user = await database.users.find_one({"_id": message.chat.id})
+        if user != None:
+            group_id = decode_payload(command.args)
+            chat = await bot.get_chat(group_id)
+            await database.groups.update_one({"_id": int(group_id)}, {"$push": {"users": {
+                "_id": message.chat.id,
+                "username": message.chat.full_name,
+                "timezone": user["timezone"],
+                "birthday":  user["birthday"],
+            }}})
+            return await message.answer(SUCCESS_ADD.format(groupname = chat.title), parse_mode="HTML")
+        await state.set_state(Form.year)
         await message.answer(ADD.format(groupname = chat.title), parse_mode="HTML")
         return await message.answer(YEAR)
     return await message.answer(START)
@@ -61,6 +79,7 @@ async def reset(message: types.Message):
 async def submit_change(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     await state.clear()
     await state.set_state(Form.year)
+    await state.update_data(update = True)
     await bot.send_message(callback.from_user.id, YEAR, reply_markup=ReplyKeyboardRemove())
 
 @router.message(Form.year)
@@ -70,7 +89,7 @@ async def get_year(message: types.Message, state: FSMContext):
     
     age = date.today().year - int(message.text)
     if age >= 0 and age <= 120:
-        await state.update_data(year = message.text)
+        await state.update_data(year = int(message.text))
         await state.set_state(Form.month)
         return await message.answer(MONTH, reply_markup = (await get_month_keyboard(MONTHS)))
 
@@ -88,7 +107,7 @@ async def get_day(message: types.Message, state: FSMContext):
     data = await state.get_data()
     if not any([day.isdigit(), int(day) > 0, int(day) <= MONTHS[data["month"]]["days"]]):
         return await message.answer(NOT_DAY)
-    await state.update_data(day = message.text)
+    await state.update_data(day = int(message.text))
     await state.set_state(Form.gender)
     return await message.answer(GENDER, reply_markup= (await get_gender_keyboard(list(GENDERS.keys()))))
 
@@ -105,8 +124,7 @@ async def get_gender(message: types.Message, state: FSMContext):
 
 @router.message(Form.town)
 async def get_town(message: types.Message, state: FSMContext):
-    await state.update_data(town = message.text)
-    API_TOKEN = get_config_variable("GOOGLE_TOKEN")
+    API_TOKEN = TGBotConfig().GOOGLE_TOKEN
     async with GoogleV3(
         api_key=API_TOKEN,
         user_agent="birthday_bot",
@@ -114,6 +132,7 @@ async def get_town(message: types.Message, state: FSMContext):
     ) as geolocator:
         geocode = partial(geolocator.geocode, language="uk")
         address = await geocode(message.text)
+        await state.update_data(town = address.address)
     if address == None:
         return await message.answer(NOT_TOWN, reply_markup=ReplyKeyboardRemove())
     url = "http://timezonefinder.michelfe.it/api/{}_{}_{}".format(0, address.longitude, address.latitude)
@@ -128,6 +147,7 @@ async def get_town(message: types.Message, state: FSMContext):
                 logging.error(e)
                 date = "ERROR"
                 time = "ERROR"
+    await state.update_data({"timezone": tz_info["tz_name"]})
     await state.set_state(Form.confirm)
     await message.answer(SUCCESS_TOWN.format(address=address, date=date, time=time), reply_markup=confirm_keyboard)
 
@@ -140,8 +160,34 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
         if message.text == "Ні":
             await state.set_state(Form.town)
             return await message.answer(NOT_SUCCESS_TOWN, reply_markup=ReplyKeyboardRemove())
-        chat = await bot.get_chat(data["group_id"])
-        return await message.answer(SUCCESS_ADD.format(groupname=chat.title), reply_markup=ReplyKeyboardRemove())
+        user = {
+                "_id": message.chat.id,
+                "username": message.chat.full_name,
+                "gender": data["gender"],
+                "address": data["town"],
+                "timezone": data["timezone"],
+                "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
+            }
+        if "update" not in data:
+            print(data)
+            chat = await bot.get_chat(data["group_id"])
+            user["groups"] = [int(data["group_id"])]
+            await database.users.insert_one(user)
+            await database.groups.update_one({"_id": int(data["group_id"])}, {"$push": {"users": {
+                "_id": message.chat.id,
+                "username": message.chat.full_name,
+                "timezone": data["timezone"],
+                "birthday":  datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
+            }}}, upsert=True)
+            return await message.answer(SUCCESS_ADD.format(groupname=chat.title), reply_markup=ReplyKeyboardRemove())
+        else:
+            await database.users.replace_one({"_id": message.chat.id}, user)
+            await database.groups.update_many({"users._id": message.chat.id}, {"$set": {"users.$": {
+                "username": message.chat.full_name,
+                "timezone": data["timezone"],
+                "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"])
+            }}})
+            return await message.answer("Ваші дані оновлено.", reply_markup=ReplyKeyboardRemove())
     elif 'gender' in data:
         if message.text == "Ні":
             await state.set_state(Form.year)
