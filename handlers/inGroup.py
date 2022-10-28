@@ -21,6 +21,12 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
     else:
         return await message.answer(ADD_MEMBER.format(username = message.new_chat_members[0].full_name, id = message.new_chat_members[0].id), parse_mode="HTML", reply_markup=keyboard)
 
+@router.message(F.content_type.in_({types.ContentType.LEFT_CHAT_MEMBER}))
+async def delete_bot(message: types.Message, bot: Bot, database: Any):
+    bot_id = (await bot.get_me()).id
+    if message.new_chat_members[0].id == bot_id:
+        await database.groups.delete_one({"_id": message.chat.id})
+
 @router.message(Command(commands=["start"]))
 async def check_channel(message: types.Message, bot: Bot, database: Any):
     if (await database.groups.count_documents({"_id": message.chat.id})) == 0:
