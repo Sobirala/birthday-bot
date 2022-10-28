@@ -1,9 +1,10 @@
 from typing import Any, Awaitable, Callable, Dict, TypeVar
 from aiogram import BaseMiddleware, types
 
-class GetDBVariable(BaseMiddleware):
-    def  __init__(self, database) -> None:
+class ConfigVariables(BaseMiddleware):
+    def  __init__(self, database, googleToken) -> None:
         self.database = database
+        self.googleToken = googleToken
 
     async def __call__(
         self,

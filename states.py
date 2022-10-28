@@ -6,4 +6,5 @@ class Form(StatesGroup):
     day = State()
     gender = State()
     town = State()
-    confirmation = State()
+
+    confirm = State()
