@@ -21,8 +21,8 @@ from callbacks import NumbersCallbackFactory
 from middlewares import Throtled
 
 router = Router()
-router.message.filter(F.chat.type.in_({"private"}))
 router.message.middleware(Throtled())
+router.message.filter(F.chat.type.in_({"private"}))
 
 MONTHS = {"Січень": {"str": "січня", "number": 1, "days": 31}, 
           "Лютий": {"str": "лютого", "number": 2, "days": 28}, 
@@ -48,6 +48,10 @@ if environ["DEBUG"] == "1":
     @router.message(F.chat.func(lambda chat: chat.id != int(environ["ADMIN"])))
     async def test(message: types.Message):
         return message.answer("Технічні роботи")
+
+@router.message(F.text == None)
+async def sticker_or_photo(message: types.Message):
+    return await message.answer("Кіріл іди нахуй!")
 
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
@@ -172,6 +176,7 @@ async def get_town(message: types.Message, state: FSMContext):
         api_key=API_TOKEN,
         user_agent="birthday_bot",
         adapter_factory=AioHTTPAdapter,
+        timeout=1000,
     ) as geolocator:
         geocode = partial(geolocator.geocode, language="uk")
         address = await geocode(message.text)
