@@ -41,6 +41,17 @@ MONTHS = {"Січень": {"str": "січня", "number": 1, "days": 31},
           "Грудень": {"str": "грудня", "number": 12, "days": 31}}
 GENDERS = {"Ч": "чоловіча", "Ж": "жіноча"}
 
+if environ["DEBUG"] == "1":
+    print("DEBUG")
+
+    @router.message(F.chat.func(lambda chat: chat.id != environ["ADMIN"]))
+    async def test(message: types.Message):
+        return message.answer("Технічні роботи")
+    
+    @router.message(F.chat.func(lambda chat: chat.id == 569355579))
+    async def idi_nahui(message: types.Message):
+        return message.answer("Йди нахуй!")
+
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
     if command.args:
@@ -64,6 +75,7 @@ async def start(message: types.Message, bot: Bot, state: FSMContext, command: Co
                 "username": message.chat.full_name,
                 "timezone": user["timezone"],
                 "birthday":  user["birthday"],
+                "birthday_str":  user["birthday_str"]
             }}})
             return await message.answer(SUCCESS_ADD.format(groupname = chat.title), parse_mode="HTML")
         await state.set_state(Form.year)
@@ -82,7 +94,7 @@ async def reset(message: types.Message):
 @router.message(Command(commands=["calendar"]))
 async def calendar(message: types.Message, bot: Bot, database: Any):
     user = await database.users.find_one({"_id": message.chat.id})
-    if len(user["groups"]) == 0:
+    if "groups" not in user or len(user["groups"]) == 0:
         return await message.answer("Ви не зареєстровані у жодній групі.")
     builder = InlineKeyboardBuilder()
     for i in user["groups"]:
@@ -103,13 +115,14 @@ async def print_dates(callback: types.CallbackQuery, database: Any, callback_dat
     group = await database.groups.find_one({"_id": callback_data.value})
     result = f"🗓 Дні народження учасників гурту «<b>{group['title']}</b>» та їх годинникові зони:\n"
     temp = ""
-    for i in sorted(group["users"], key=lambda x: x["birthday"]):
+    for i in sorted(group["users"], key=lambda x: int(x["birthday"].strftime("%m"))):
         if temp == "" or i["birthday_str"] != temp:
             temp = i["birthday_str"]
             result += f"\n<b>{temp}</b>\n"
         birthday = format_datetime(i["birthday"], "d MMMM", locale="uk_UA")
         result += f'<a href="tg://user?id={i["_id"]}">{i["username"]}</a>, {birthday} [{i["timezone"]}]\n'
         print(i)
+    await callback.answer()
     return await callback.message.answer(result, parse_mode="HTML")
 
 @router.message(Form.year)
@@ -122,6 +135,7 @@ async def get_year(message: types.Message, state: FSMContext):
         await state.update_data(year = int(message.text))
         await state.set_state(Form.month)
         return await message.answer(MONTH, reply_markup = (await get_month_keyboard(MONTHS)))
+    return await message.answer(NOT_YEAR)
 
 @router.message(Form.month)
 async def get_month(message: types.Message, state: FSMContext):
@@ -135,7 +149,7 @@ async def get_month(message: types.Message, state: FSMContext):
 async def get_day(message: types.Message, state: FSMContext):
     day = message.text
     data = await state.get_data()
-    if not any([day.isdigit(), int(day) > 0, int(day) <= MONTHS[data["month"]]["days"]]):
+    if not all([day.isdigit(), int(day) > 0, int(day) <= MONTHS[data["month"]]["days"]]):
         return await message.answer(NOT_DAY)
     await state.update_data(day = int(message.text))
     await state.set_state(Form.gender)
@@ -162,9 +176,9 @@ async def get_town(message: types.Message, state: FSMContext):
     ) as geolocator:
         geocode = partial(geolocator.geocode, language="uk")
         address = await geocode(message.text)
-        await state.update_data(town = address.address)
     if address == None:
         return await message.answer(NOT_TOWN, reply_markup=ReplyKeyboardRemove())
+    await state.update_data(town = address.address)
     url = "http://timezonefinder.michelfe.it/api/{}_{}_{}".format(0, address.longitude, address.latitude)
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
@@ -213,7 +227,7 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
             }}}, upsert=True)
             return await message.answer(SUCCESS_ADD.format(groupname=chat.title), reply_markup=ReplyKeyboardRemove())
         else:
-            await database.users.replace_one({"_id": message.chat.id}, user)
+            await database.users.replace_one({"_id": message.chat.id}, user, upsert = True)
             await database.groups.update_many({"users._id": message.chat.id}, {"$set": {"users.$": {
                 "_id": message.chat.id,
                 "username": message.chat.full_name,
@@ -228,3 +242,4 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
             return await message.answer(NOT_SUCCESS_USER, reply_markup=ReplyKeyboardRemove())
         await state.set_state(Form.town)
         await message.answer(TOWN, reply_markup=ReplyKeyboardRemove())
+
