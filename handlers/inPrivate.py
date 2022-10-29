@@ -232,6 +232,7 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
                 "birthday":  datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
                 "birthday_str": f"{data['month']}"
             }}}, upsert=True)
+            await state.clear()
             return await message.answer(SUCCESS_ADD.format(groupname=chat.title), reply_markup=ReplyKeyboardRemove())
         else:
             await database.users.update_one({"_id": message.chat.id}, {"$set": user}, upsert = True)
@@ -242,6 +243,7 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
                 "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
                 "birthday_str": f"{data['month']}"
             }}})
+            await state.clear()
             return await message.answer("Ваші дані оновлено.", reply_markup=ReplyKeyboardRemove())
     elif 'gender' in data:
         if message.text == "Ні":
