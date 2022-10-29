@@ -51,7 +51,7 @@ if environ["DEBUG"] == "1":
 
 @router.message(F.text == None)
 async def sticker_or_photo(message: types.Message):
-    return await message.answer("Кіріл іди нахуй!")
+    return await message.answer("Я вас не розумію. Надішліть текстове повідомлення будь-ласка.")
 
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
@@ -234,7 +234,7 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
             }}}, upsert=True)
             return await message.answer(SUCCESS_ADD.format(groupname=chat.title), reply_markup=ReplyKeyboardRemove())
         else:
-            await database.users.replace_one({"_id": message.chat.id}, user, upsert = True)
+            await database.users.update_one({"_id": message.chat.id}, {"$set": user}, upsert = True)
             await database.groups.update_many({"users._id": message.chat.id}, {"$set": {"users.$": {
                 "_id": message.chat.id,
                 "username": message.chat.full_name,
