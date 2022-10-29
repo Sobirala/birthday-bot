@@ -35,10 +35,9 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
     keyboard = await generate_refferal_button(link)
     return await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=keyboard)
 
-@router.message(Command(commands=["start"]))
+@router.message(Command(commands=["calendar"]))
 async def calendar(message: types.Message, bot: Bot):
-    print(bot)
-    return await message.reply(NOT_COMMAND.format(link = ""))
+    return await message.reply(NOT_COMMAND.format(link = (await bot.get_me()).username), parse_mode="HTML")
 
 # @router.message()
 # async def test(message: types.Message):
