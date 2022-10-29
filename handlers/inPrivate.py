@@ -116,7 +116,7 @@ async def print_dates(callback: types.CallbackQuery, database: Any, callback_dat
     group = await database.groups.find_one({"_id": callback_data.value})
     result = f"🗓 Дні народження учасників гурту «<b>{group['title']}</b>» та їх годинникові зони:\n"
     temp = ""
-    for i in sorted(group["users"], key=lambda x: int(x["birthday"].strftime("%m"))):
+    for i in sorted(group["users"], key=lambda x: (int(x["birthday"].strftime("%m")), int(x["birthday"].strftime("%d")))):
         if temp == "" or i["birthday_str"] != temp:
             temp = i["birthday_str"]
             result += f"\n<b>{temp}</b>\n"
