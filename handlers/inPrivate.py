@@ -145,8 +145,10 @@ async def get_month(message: types.Message, state: FSMContext):
 @router.message(Form.day)
 async def get_day(message: types.Message, state: FSMContext):
     day = message.text
+    if not day.isdigit():
+        return await message.answer(NOT_DAY)
     data = await state.get_data()
-    if not all([day.isdigit(), int(day) > 0, int(day) <= MONTHS[data["month"]]["days"]]):
+    if not (int(day) > 0 and int(day) <= MONTHS[data["month"]]["days"]):
         return await message.answer(NOT_DAY)
     await state.update_data(day = int(message.text))
     await state.set_state(Form.gender)
