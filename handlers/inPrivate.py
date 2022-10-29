@@ -97,8 +97,8 @@ async def calendar(message: types.Message, bot: Bot, database: Any):
     for i in user["groups"]:
         chat = await bot.get_chat(i)
         builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="calendar", value=i))
-    builder.adjust(1)
-    return await message.answer("Test", reply_markup=builder.as_markup())
+    builder.adjust(2)
+    return await message.answer("Оберіть групу:", reply_markup=builder.as_markup())
 
 @router.callback_query(Text("submit"))
 async def submit_change(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
