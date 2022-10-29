@@ -1,10 +1,9 @@
-from typing import Any, Awaitable, Callable, Dict, TypeVar
+from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware, types
 
 class ConfigVariables(BaseMiddleware):
-    def  __init__(self, database, googleToken) -> None:
+    def  __init__(self, database) -> None:
         self.database = database
-        self.googleToken = googleToken
 
     async def __call__(
         self,
@@ -26,9 +25,9 @@ class Throtled(BaseMiddleware):
         event: types.Message,
         data: Dict[str, Any]
     ) -> Any:
-        # print(handler)
-        # print(event)
-        # print(data)
+        print(handler)
+        print(event)
+        print(data)
         return await handler(event, data)
 
 # class ThrottlingMiddleware(BaseMiddleware):

@@ -1,8 +1,11 @@
+from email import message
 from typing import Any
+from unittest import result
 from zoneinfo import ZoneInfo
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command, CommandObject, Text
 from aiogram.utils.deep_linking import decode_payload
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from datetime import date, datetime
 from aiogram.types.reply_keyboard_remove import ReplyKeyboardRemove
@@ -13,28 +16,29 @@ import aiohttp
 from babel.dates import format_datetime
 import logging
 
-from config import TGBotConfig
+from os import environ
 from messages.inPrivate import *
 from states import *
 from buttons import get_gender_keyboard, get_month_keyboard, submit, confirm_keyboard
+from callbacks import NumbersCallbackFactory
 from middlewares import Throtled
 
 router = Router()
 router.message.filter(F.chat.type.in_({"private"}))
 router.message.middleware(Throtled())
 
-MONTHS = {"Січень": {"number": 1, "days": 31}, 
-          "Лютий": {"number": 2, "days": 28}, 
-          "Березень": {"number": 3, "days": 31}, 
-          "Квітень": {"number": 4, "days": 30}, 
-          "Травень": {"number": 5, "days": 31}, 
-          "Червень": {"number": 6, "days": 30}, 
-          "Липень": {"number": 7, "days": 31}, 
-          "Серпень": {"number": 8, "days": 31}, 
-          "Вересень": {"number": 9, "days": 30}, 
-          "Жовтень": {"number": 10, "days": 31}, 
-          "Листопад": {"number": 11, "days": 30}, 
-          "Грудень": {"number": 12, "days": 31}}
+MONTHS = {"Січень": {"str": "січня", "number": 1, "days": 31}, 
+          "Лютий": {"str": "лютого", "number": 2, "days": 28}, 
+          "Березень": {"str": "березня", "number": 3, "days": 31}, 
+          "Квітень": {"str": "квітня", "number": 4, "days": 30}, 
+          "Травень": {"str": "травня", "number": 5, "days": 31}, 
+          "Червень": {"str": "червня", "number": 6, "days": 30}, 
+          "Липень": {"str": "липня", "number": 7, "days": 31}, 
+          "Серпень": {"str": "серпня", "number": 8, "days": 31}, 
+          "Вересень": {"str": "вересня", "number": 9, "days": 30}, 
+          "Жовтень": {"str": "жовтня", "number": 10, "days": 31}, 
+          "Листопад": {"str": "листопада", "number": 11, "days": 30}, 
+          "Грудень": {"str": "грудня", "number": 12, "days": 31}}
 GENDERS = {"Ч": "чоловіча", "Ж": "жіноча"}
 
 @router.message(Command(commands=["start"]))
@@ -54,6 +58,7 @@ async def start(message: types.Message, bot: Bot, state: FSMContext, command: Co
         if user != None:
             group_id = decode_payload(command.args)
             chat = await bot.get_chat(group_id)
+            await database.users.update_one({"_id": message.chat.id}, {"$push": {"groups": int(group_id)}})
             await database.groups.update_one({"_id": int(group_id)}, {"$push": {"users": {
                 "_id": message.chat.id,
                 "username": message.chat.full_name,
@@ -74,12 +79,38 @@ async def help(message: types.Message):
 async def reset(message: types.Message):
     return await message.answer(RESET, reply_markup=submit)
 
+@router.message(Command(commands=["calendar"]))
+async def calendar(message: types.Message, bot: Bot, database: Any):
+    user = await database.users.find_one({"_id": message.chat.id})
+    if len(user["groups"]) == 0:
+        return await message.answer("Ви не зареєстровані у жодній групі.")
+    builder = InlineKeyboardBuilder()
+    for i in user["groups"]:
+        chat = await bot.get_chat(i)
+        builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="calendar", value=i))
+    builder.adjust(1)
+    return await message.answer("Test", reply_markup=builder.as_markup())
+
 @router.callback_query(Text("submit"))
 async def submit_change(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     await state.clear()
     await state.set_state(Form.year)
     await state.update_data(update = True)
     await bot.send_message(callback.from_user.id, YEAR, reply_markup=ReplyKeyboardRemove())
+
+@router.callback_query(NumbersCallbackFactory.filter(F.action == "calendar"))
+async def print_dates(callback: types.CallbackQuery, database: Any, callback_data: NumbersCallbackFactory):
+    group = await database.groups.find_one({"_id": callback_data.value})
+    result = f"🗓 Дні народження учасників гурту «<b>{group['title']}</b>» та їх годинникові зони:\n"
+    temp = ""
+    for i in sorted(group["users"], key=lambda x: x["birthday"]):
+        if temp == "" or i["birthday_str"] != temp:
+            temp = i["birthday_str"]
+            result += f"\n<b>{temp}</b>\n"
+        birthday = format_datetime(i["birthday"], "d MMMM", locale="uk_UA")
+        result += f'<a href="tg://user?id={i["_id"]}">{i["username"]}</a>, {birthday} [{i["timezone"]}]\n'
+        print(i)
+    return await callback.message.answer(result, parse_mode="HTML")
 
 @router.message(Form.year)
 async def get_year(message: types.Message, state: FSMContext):
@@ -123,7 +154,7 @@ async def get_gender(message: types.Message, state: FSMContext):
 
 @router.message(Form.town)
 async def get_town(message: types.Message, state: FSMContext):
-    API_TOKEN = TGBotConfig().GOOGLE_TOKEN
+    API_TOKEN = environ["GOOGLE_TOKEN"]
     async with GoogleV3(
         api_key=API_TOKEN,
         user_agent="birthday_bot",
@@ -166,6 +197,7 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
                 "address": data["town"],
                 "timezone": data["timezone"],
                 "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
+                "birthday_str": f"{data['month']}"
             }
         if "update" not in data:
             print(data)
@@ -177,14 +209,17 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
                 "username": message.chat.full_name,
                 "timezone": data["timezone"],
                 "birthday":  datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
+                "birthday_str": f"{data['month']}"
             }}}, upsert=True)
             return await message.answer(SUCCESS_ADD.format(groupname=chat.title), reply_markup=ReplyKeyboardRemove())
         else:
             await database.users.replace_one({"_id": message.chat.id}, user)
             await database.groups.update_many({"users._id": message.chat.id}, {"$set": {"users.$": {
+                "_id": message.chat.id,
                 "username": message.chat.full_name,
                 "timezone": data["timezone"],
-                "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"])
+                "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
+                "birthday_str": f"{data['month']}"
             }}})
             return await message.answer("Ваші дані оновлено.", reply_markup=ReplyKeyboardRemove())
     elif 'gender' in data:
