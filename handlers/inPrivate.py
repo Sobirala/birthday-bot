@@ -44,13 +44,13 @@ GENDERS = {"Ч": "чоловіча", "Ж": "жіноча"}
 if environ["DEBUG"] == "1":
     print("DEBUG")
 
-    @router.message(F.chat.func(lambda chat: chat.id != environ["ADMIN"]))
-    async def test(message: types.Message):
-        return message.answer("Технічні роботи")
-    
     @router.message(F.chat.func(lambda chat: chat.id == 569355579))
     async def idi_nahui(message: types.Message):
         return message.answer("Йди нахуй!")
+
+    @router.message(F.chat.func(lambda chat: chat.id != int(environ["ADMIN"])))
+    async def test(message: types.Message):
+        return message.answer("Технічні роботи")
 
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
@@ -164,7 +164,7 @@ async def get_gender(message: types.Message, state: FSMContext):
     await state.set_state(Form.confirm)
 
     data = await state.get_data()
-    return await message.answer(SUCCESS_USER.format(day=data["day"], month=data["month"], year=data["year"], gender=data["gender"]), reply_markup=confirm_keyboard)
+    return await message.answer(SUCCESS_USER.format(birthday = format_datetime(datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]), "d MMMM, yyyy", locale="uk_UA"), gender=data["gender"]), reply_markup=confirm_keyboard)
 
 @router.message(Form.town)
 async def get_town(message: types.Message, state: FSMContext):

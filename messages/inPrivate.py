@@ -72,7 +72,7 @@ NOT_GENDER = """
 """
 
 SUCCESS_USER = """
-Ви народилися {day} {month}, {year}. Ваша стать — {gender}. Все вірно?
+Ви народилися {birthday}. Ваша стать — {gender}. Все вірно?
 """
 
 NOT_SUCCESS_USER = """
