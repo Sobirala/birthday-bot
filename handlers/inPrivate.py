@@ -1,5 +1,4 @@
 from typing import Any
-from zoneinfo import ZoneInfo
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command, CommandObject, Text
 from aiogram.utils.deep_linking import decode_payload
@@ -11,9 +10,8 @@ from geopy.geocoders import GoogleV3
 from geopy.adapters import AioHTTPAdapter
 from functools import partial
 import aiohttp
-from babel.dates import format_datetime
+from babel.dates import format_datetime, get_timezone
 import logging
-import pytz
 
 from os import environ
 from messages.inPrivate import *
@@ -183,9 +181,12 @@ async def get_town(message: types.Message, state: FSMContext):
         async with session.get(url) as response:
             try:
                 tz_info = await response.json(content_type='application/javascript')
-                today = datetime.today().replace(tzinfo=ZoneInfo(tz_info['tz_name']))
+                
+                today = datetime.utcnow()
+                print(today)
                 date = format_datetime(today, "d MMMM Y", locale='uk_UA')
-                time = format_datetime(today, "H:mm")
+                time = format_datetime(today, "H:mm", tzinfo=get_timezone(tz_info["tz_name"]))
+                print(time)
             except Exception as e:
                 logging.error(e)
                 date = "ERROR"
