@@ -1,0 +1,12 @@
+version: '3.4'
+
+services:
+  birthday:
+    image: birthday
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    restart: on-failure
+    stop_signal: SIGINT
+    env_file:
+      - .env
