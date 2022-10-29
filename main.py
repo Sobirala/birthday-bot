@@ -26,7 +26,8 @@ async def main():
     dp = Dispatcher(storage=storage)
     client = motor.motor_asyncio.AsyncIOMotorClient(config.MONGO_URL)
     db = client.birthdays
-    dp.message.middleware(ConfigVariables(db, config))
+    dp.message.middleware(ConfigVariables(db))
+    dp.callback_query.middleware(ConfigVariables(db))
 
     dp.include_router(inPrivate.router)
     dp.include_router(inGroup.router)
