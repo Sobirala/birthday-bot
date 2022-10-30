@@ -6,7 +6,6 @@
 
 ## Table of Contents
  - [`Bot`](https://t.me/sobiralaDNBot)
- - [`Table of Contencts`](#table-of-contencts)
  - [`Short information`](#short-information)
  - [`How I do work`](#how-do-i-work)
  - [`Commands`](#my-commands)
