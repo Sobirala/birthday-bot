@@ -10,7 +10,7 @@
  - <a href="#short-information">Short information</a>
  - <a href="#how-do-i-work">How I do work</a>
  - <a href="#my-commands">Commands</a>
-    - <a href="#donate">Donate commands</a>
+    - [`Donate commands`](#donate)
 
 
 ## Short information
