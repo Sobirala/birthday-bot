@@ -12,14 +12,15 @@ from middlewares import ConfigVariables
 
 logging.basicConfig(level=logging.INFO)
 
+
 async def main():
     config = TGBotConfig()
     storage = RedisStorage(aioredis.Redis(
-        host = config.REDIS_HOST,
-        port = config.REDIS_PORT,
-        username = config.REDIS_USERNAME,
-        password = config.REDIS_PASSWORD,
-        db = 0,
+        host=config.REDIS_HOST,
+        port=config.REDIS_PORT,
+        username=config.REDIS_USERNAME,
+        password=config.REDIS_PASSWORD,
+        db=0,
         decode_responses=True
     ))
     bot = Bot(token=config.TOKEN)
@@ -33,6 +34,7 @@ async def main():
     dp.include_router(inGroup.router)
 
     await dp.start_polling(bot)
+
 
 if __name__ == '__main__':
     asyncio.run(main())

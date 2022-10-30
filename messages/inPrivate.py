@@ -72,7 +72,7 @@ NOT_GENDER = """
 """
 
 SUCCESS_USER = """
-Ви народилися {birthday}. Ваша стать — {gender}. Все правильно?
+Ви народилися {birthday}. Ваша стать — {gender}. Все вірно?
 """
 
 NOT_SUCCESS_USER = """
@@ -84,7 +84,7 @@ TOWN = """
 """
 
 SUCCESS_TOWN = """
-Ви знаходитесь в «{address}». У вас зараз {date} та {time}. Все правильно?
+Ви знаходитесь в «{address}». У вас зараз {date} та {time}. Все вірно?
 """
 
 NOT_TOWN = """

@@ -1,7 +1,8 @@
 from os import environ
 from typing import Final
 
-class TGBotConfig():
+
+class TGBotConfig:
     try:
         TOKEN: Final = environ["BOT_TOKEN"]
         MONGO_URL: Final = environ["MONGO_URL"]
