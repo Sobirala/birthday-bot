@@ -6,10 +6,10 @@
 
 ## Table of Contents
  - [`Bot`](https://t.me/sobiralaDNBot)
- - <a href="#table-of-contencts">Table of Contencts</a>
- - <a href="#short-information">Short information</a>
- - <a href="#how-do-i-work">How I do work</a>
- - <a href="#my-commands">Commands</a>
+ - [`Table of Contencts`](#table-of-contencts)
+ - [`Short information`](#short-information)
+ - [`How I do work`](#how-do-i-work)
+ - [`Commands`](#my-commands)
     - [`Donate commands`](#donate)
 
 
