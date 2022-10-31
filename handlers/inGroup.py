@@ -19,10 +19,9 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
         if new_member.id == bot_id:
             if (await database.groups.count_documents({"_id": message.chat.id})) == 0:
                 await database.groups.insert_one({"_id": message.chat.id, "title": message.chat.title, "users": []})
-            return await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=keyboard)
+            await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=keyboard)
         elif not new_member.is_bot:
-            return await message.answer(
-                ADD_MEMBER.format(username=new_member.full_name, id=new_member.id),
+            await message.answer(ADD_MEMBER.format(username=new_member.full_name, id=new_member.id),
                 parse_mode="HTML", reply_markup=keyboard)
 
 
