@@ -10,7 +10,7 @@ from config import TGBotConfig
 from handlers import inGroup, inPrivate
 from middlewares import ConfigVariables
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s', level=logging.DEBUG)
 
 
 async def main():
@@ -20,7 +20,7 @@ async def main():
         port=config.REDIS_PORT,
         username=config.REDIS_USERNAME,
         password=config.REDIS_PASSWORD,
-        db=0,
+        db=config.REDIS_DB,
         decode_responses=True
     ))
     bot = Bot(token=config.TOKEN)

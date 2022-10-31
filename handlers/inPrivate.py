@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command, CommandObject, Text
@@ -18,10 +19,8 @@ from messages.inPrivate import *
 from states import *
 from buttons import get_gender_keyboard, get_month_keyboard, submit, confirm_keyboard
 from callbacks import NumbersCallbackFactory
-from middlewares import Throtled
 
 router = Router()
-router.message.middleware(Throtled())
 router.message.filter(F.chat.type.in_({"private"}))
 
 MONTHS = {"Січень": {"str": "січня", "number": 1, "days": 31},
@@ -39,7 +38,7 @@ MONTHS = {"Січень": {"str": "січня", "number": 1, "days": 31},
 GENDERS = {"Ч": "чоловіча", "Ж": "жіноча"}
 
 if environ["DEBUG"] == "1":
-    print("DEBUG")
+    logging.debug("Start DEBUG mode!")
 
 
     @router.message(F.chat.func(lambda chat: chat.id == 569355579))
@@ -52,7 +51,7 @@ if environ["DEBUG"] == "1":
         return message.answer("Технічні роботи")
 
 
-@router.message(F.text is None)
+@router.message(~F.text)
 async def sticker_or_photo(message: types.Message):
     return await message.answer("Я вас не розумію. Надішліть текстове повідомлення будь-ласка.")
 

@@ -10,6 +10,7 @@ class TGBotConfig:
         REDIS_PORT: int = environ["REDIS_PORT"]
         REDIS_USERNAME: Final = environ["REDIS_USERNAME"]
         REDIS_PASSWORD: Final = environ["REDIS_PASSWORD"]
+        REDIS_DB: int = environ["REDIS_DB"]
         GOOGLE_TOKEN: Final = environ["GOOGLE_TOKEN"]
     except Exception as key:
         raise RuntimeError(f"{key} must be defined!")
