@@ -22,7 +22,7 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
             await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=keyboard)
         elif not new_member.is_bot:
             await message.answer(ADD_MEMBER.format(username=new_member.full_name, id=new_member.id),
-                parse_mode="HTML", reply_markup=keyboard)
+                                 parse_mode="HTML", reply_markup=keyboard)
 
 
 @router.message(F.content_type.in_({types.ContentType.LEFT_CHAT_MEMBER}))
