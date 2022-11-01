@@ -7,7 +7,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 from redis import asyncio as aioredis
 
 from config import TGBotConfig
-from handlers import inGroup, inPrivate
+from handlers import inGroup, inPrivate, exceptions
 from middlewares import ConfigVariables
 
 logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s', level=logging.DEBUG)
@@ -32,6 +32,7 @@ async def main():
 
     dp.include_router(inPrivate.router)
     dp.include_router(inGroup.router)
+    dp.include_router(exceptions.router)
 
     await dp.start_polling(bot)
 

@@ -37,25 +37,6 @@ MONTHS = {"Січень": {"str": "січня", "number": 1, "days": 31},
           "Грудень": {"str": "грудня", "number": 12, "days": 31}}
 GENDERS = {"Ч": "чоловіча", "Ж": "жіноча"}
 
-if environ["DEBUG"] == "1":
-    logging.debug("Start DEBUG mode!")
-
-
-    @router.message(F.chat.func(lambda chat: chat.id == 569355579))
-    async def idi_nahui(message: types.Message):
-        return message.answer("Йди нахуй!")
-
-
-    @router.message(F.chat.func(lambda chat: chat.id != int(environ["ADMIN"])))
-    async def test(message: types.Message):
-        return message.answer("Технічні роботи")
-
-
-@router.message(~F.text)
-async def sticker_or_photo(message: types.Message):
-    return await message.answer("Я вас не розумію. Надішліть текстове повідомлення будь-ласка.")
-
-
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
     if command.args:
