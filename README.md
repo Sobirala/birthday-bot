@@ -1,7 +1,7 @@
 # **[СобіралаДН](https://t.me/sobiralaDNBot)** 
 
 
-<img src="https://img.icons8.com/bubbles/300/000000/birthday.png" width="100" height="100" alt="Birthday Bot">
+![Birthday Bot](https://img.icons8.com/bubbles/100/000000/birthday.png)
 
 
 ## Table of Contents
