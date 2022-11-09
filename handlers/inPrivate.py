@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command, CommandObject, Text
@@ -11,7 +10,7 @@ from geopy.geocoders import GoogleV3
 from geopy.adapters import AioHTTPAdapter
 from functools import partial
 import aiohttp
-from babel.dates import format_datetime, get_timezone
+from babel.dates import get_timezone
 import logging
 
 from os import environ
@@ -23,19 +22,20 @@ from callbacks import NumbersCallbackFactory
 router = Router()
 router.message.filter(F.chat.type.in_({"private"}))
 
-MONTHS = {"Січень": {"str": "січня", "number": 1, "days": 31},
-          "Лютий": {"str": "лютого", "number": 2, "days": 28},
-          "Березень": {"str": "березня", "number": 3, "days": 31},
-          "Квітень": {"str": "квітня", "number": 4, "days": 30},
-          "Травень": {"str": "травня", "number": 5, "days": 31},
-          "Червень": {"str": "червня", "number": 6, "days": 30},
-          "Липень": {"str": "липня", "number": 7, "days": 31},
-          "Серпень": {"str": "серпня", "number": 8, "days": 31},
-          "Вересень": {"str": "вересня", "number": 9, "days": 30},
-          "Жовтень": {"str": "жовтня", "number": 10, "days": 31},
-          "Листопад": {"str": "листопада", "number": 11, "days": 30},
-          "Грудень": {"str": "грудня", "number": 12, "days": 31}}
+MONTHS = {"Січень": {"number": 1, "days": 31},
+          "Лютий": {"number": 2, "days": 28},
+          "Березень": {"number": 3, "days": 31},
+          "Квітень": {"number": 4, "days": 30},
+          "Травень": {"number": 5, "days": 31},
+          "Червень": {"number": 6, "days": 30},
+          "Липень": {"number": 7, "days": 31},
+          "Серпень": {"number": 8, "days": 31},
+          "Вересень": {"number": 9, "days": 30},
+          "Жовтень": {"number": 10, "days": 31},
+          "Листопад": {"number": 11, "days": 30},
+          "Грудень": {"number": 12, "days": 31}}
 GENDERS = {"Ч": "чоловіча", "Ж": "жіноча"}
+
 
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
@@ -49,7 +49,7 @@ async def start(message: types.Message, bot: Bot, state: FSMContext, command: Co
         chat = await bot.get_chat(group_id)
         for i in group["users"]:
             if i["_id"] == message.chat.id:
-                return await message.answer(YET_ADD.format(groupname=chat.title))
+                return await message.answer(await YET_ADD.render_async(groupname=chat.title))
         user = await database.users.find_one({"_id": message.chat.id})
         if user is not None:
             group_id = decode_payload(command.args)
@@ -62,9 +62,11 @@ async def start(message: types.Message, bot: Bot, state: FSMContext, command: Co
                 "birthday": user["birthday"],
                 "birthday_str": user["birthday_str"]
             }}})
-            return await message.answer(SUCCESS_ADD.format(groupname=chat.title), parse_mode="HTML")
+            is_admin = any(admin.user.id == message.chat.id for admin in (await bot.get_chat_administrators(group_id)))
+            return await message.answer(await SUCCESS_ADD.render_async(groupname=chat.title, is_admin=is_admin),
+                                        parse_mode="HTML")
         await state.set_state(Form.year)
-        await message.answer(ADD.format(groupname=chat.title), parse_mode="HTML")
+        await message.answer(await ADD.render_async(groupname=chat.title), parse_mode="HTML")
         return await message.answer(YEAR)
     return await message.answer(START)
 
@@ -101,19 +103,34 @@ async def submit_change(callback: types.CallbackQuery, state: FSMContext, bot: B
 
 
 @router.callback_query(NumbersCallbackFactory.filter(F.action == "calendar"))
-async def print_dates(callback: types.CallbackQuery, database: Any, callback_data: NumbersCallbackFactory):
-    group = await database.groups.find_one({"_id": callback_data.value})
-    result = f"🗓 Дні народження учасників гурту «<b>{group['title']}</b>» та їх годинникові зони:\n"
-    temp = ""
-    for i in sorted(group["users"],
-                    key=lambda x: (int(x["birthday"].strftime("%m")), int(x["birthday"].strftime("%d")))):
-        if temp == "" or i["birthday_str"] != temp:
-            temp = i["birthday_str"]
-            result += f"\n<b>{temp}</b>\n"
-        birthday = format_datetime(i["birthday"], "d MMMM", locale="uk_UA")
-        result += f'<a href="tg://user?id={i["_id"]}">{i["username"]}</a>, {birthday} [{i["timezone"]}]\n'
+async def print_dates(callback: types.CallbackQuery, database: Any, callback_data: NumbersCallbackFactory, bot: Bot):
+    groupname = (await bot.get_chat(callback_data.value)).title
+    group = database.groups.aggregate([
+        {"$match": {"_id": callback_data.value}},
+        {"$unwind": "$users"},
+        {
+            "$replaceRoot": {
+                "newRoot": "$users"
+            }
+        },
+        {"$project": {
+            "_id": 1,
+            "username": 1,
+            "timezone": 1,
+            "birthday": 1,
+            "birthday_str": 1,
+            "day": {"$dayOfMonth": "$birthday"}
+        }},
+        {"$sort": {"day": 1}},
+        {"$group": {
+            "_id": {"month_str": "$birthday_str", "month": {"$month": "$birthday"}},
+            "users": {"$push": "$$ROOT"}
+        }},
+        {"$sort": {"_id.month": 1}}
+    ])
     await callback.answer()
-    return await callback.message.answer(result, parse_mode="HTML")
+    return await callback.message.answer(await CALENDAR.render_async(groupname=groupname, group=group),
+                                         parse_mode="HTML")
 
 
 @router.message(Form.year)
@@ -160,7 +177,7 @@ async def get_gender(message: types.Message, state: FSMContext):
     await state.set_state(Form.confirm)
 
     data = await state.get_data()
-    return await message.answer(SUCCESS_USER.format(
+    return await message.answer(await SUCCESS_USER.render_async(
         birthday=format_datetime(datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]), "d MMMM, yyyy",
                                  locale="uk_UA"), gender=data["gender"]), reply_markup=confirm_keyboard)
 
@@ -194,7 +211,8 @@ async def get_town(message: types.Message, state: FSMContext):
                 time = "ERROR"
     await state.update_data({"timezone": tz_info["tz_name"]})
     await state.set_state(Form.confirm)
-    await message.answer(SUCCESS_TOWN.format(address=address, date=date, time=time), reply_markup=confirm_keyboard)
+    await message.answer(await SUCCESS_TOWN.render_async(address=address, date=date, time=time),
+                         reply_markup=confirm_keyboard)
 
 
 @router.message(Form.confirm)
@@ -226,8 +244,10 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
                 "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
                 "birthday_str": f"{data['month']}"
             }}}, upsert=True)
+            is_admin = any(admin.user.id == message.chat.id for admin in (await bot.get_chat_administrators(data["group_id"])))
             await state.clear()
-            return await message.answer(SUCCESS_ADD.format(groupname=chat.title), reply_markup=ReplyKeyboardRemove())
+            return await message.answer(await SUCCESS_ADD.render_async(groupname=chat.title, is_admin=is_admin),
+                                        reply_markup=ReplyKeyboardRemove())
         else:
             await database.users.update_one({"_id": message.chat.id}, {"$set": user}, upsert=True)
             await database.groups.update_many({"users._id": message.chat.id}, {"$set": {"users.$": {

@@ -21,7 +21,7 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
                 await database.groups.insert_one({"_id": message.chat.id, "title": message.chat.title, "users": []})
             await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=keyboard)
         elif not new_member.is_bot:
-            await message.answer(ADD_MEMBER.format(username=new_member.full_name, id=new_member.id),
+            await message.answer(await ADD_MEMBER.render_async(username=new_member.full_name, id=new_member.id),
                                  parse_mode="HTML", reply_markup=keyboard)
 
 
@@ -43,4 +43,4 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
 
 @router.message(Command(commands=["calendar"]))
 async def calendar(message: types.Message, bot: Bot):
-    return await message.reply(NOT_COMMAND.format(link=(await bot.get_me()).username), parse_mode="HTML")
+    return await message.reply(await NOT_COMMAND.render_async(link=(await bot.get_me()).username), parse_mode="HTML")
