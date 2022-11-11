@@ -132,7 +132,7 @@ YET_ADD = environment.from_string("""
 """)
 
 CALENDAR = environment.from_string("""
-🗓 Дні народження учасників гурту «<b>{{ groupname }}<b>» та їх годинникові зони:
+🗓 Дні народження учасників гурту «<b>{{ groupname }}</b>» та їх годинникові зони:
 {% for month in group %}
 
 <b>{{ month._id.month_str }}</b>
