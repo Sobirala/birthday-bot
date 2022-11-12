@@ -1,4 +1,4 @@
-FROM python:3.10-slim as compiler
+FROM python:3.11-buster as compiler
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -16,7 +16,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.txt /app/requirements.txt
 RUN python -m pip install -r requirements.txt
 
-FROM python:3.10-slim as runner
+FROM python:3.11-buster as runner
 
 WORKDIR /app/
 COPY --from=compiler /opt/venv /opt/venv

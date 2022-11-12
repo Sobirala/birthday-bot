@@ -94,6 +94,23 @@ async def calendar(message: types.Message, bot: Bot, database: Any):
     return await message.answer("Оберіть групу:", reply_markup=builder.as_markup())
 
 
+@router.message(Command(commands=["removeme"]))
+async def removeme(message: types.Message, bot: Bot, database: Any):
+    user = await database.users.find_one({"_id": message.chat.id})
+    if "groups" not in user or len(user["groups"]) == 0:
+        return await message.answer("Ви не зареєстровані у жодній групі.")
+    builder = InlineKeyboardBuilder()
+    for i in user["groups"]:
+        try:
+            chat = await bot.get_chat(i)
+            builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="delete", value=i).pack())
+        except Exception as err:
+            logging.error(err)
+    builder.button(text="Видалити з усіх груп", callback_data=NumbersCallbackFactory(action="delete", value="all"))
+    builder.adjust(2, len(user["groups"])//2-1)
+    return await message.answer(REMOVEME, reply_markup=builder.as_markup())
+
+
 @router.callback_query(Text("submit"))
 async def submit_change(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     await state.clear()
@@ -244,7 +261,8 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
                 "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
                 "birthday_str": f"{data['month']}"
             }}}, upsert=True)
-            is_admin = any(admin.user.id == message.chat.id for admin in (await bot.get_chat_administrators(data["group_id"])))
+            is_admin = any(
+                admin.user.id == message.chat.id for admin in (await bot.get_chat_administrators(data["group_id"])))
             await state.clear()
             return await message.answer(await SUCCESS_ADD.render_async(groupname=chat.title, is_admin=is_admin),
                                         reply_markup=ReplyKeyboardRemove())

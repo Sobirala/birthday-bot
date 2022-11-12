@@ -28,7 +28,7 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
 @router.message(F.content_type.in_({types.ContentType.LEFT_CHAT_MEMBER}))
 async def delete_bot(message: types.Message, bot: Bot, database: Any):
     bot_id = (await bot.get_me()).id
-    if message.new_chat_members[0].id == bot_id:
+    if message.left_chat_member.id == bot_id:
         await database.groups.delete_one({"_id": message.chat.id})
 
 
