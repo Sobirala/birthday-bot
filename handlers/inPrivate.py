@@ -107,7 +107,7 @@ async def removeme(message: types.Message, bot: Bot, database: Any):
         except Exception as err:
             logging.error(err)
     builder.button(text="Видалити з усіх груп", callback_data=NumbersCallbackFactory(action="delete", value="all"))
-    builder.adjust(2, len(user["groups"])//2-1)
+    builder.adjust(2, len(user["groups"])//2)
     return await message.answer(REMOVEME, reply_markup=builder.as_markup())
 
 
