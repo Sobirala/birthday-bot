@@ -37,119 +37,6 @@ MONTHS = {"Січень": {"number": 1, "days": 31},
 GENDERS = {"Ч": "чоловіча", "Ж": "жіноча"}
 
 
-@router.message(Command(commands=["start"]))
-async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
-    if command.args:
-        group_id = decode_payload(command.args)
-        await state.clear()
-        await state.update_data({"group_id": group_id})
-        group = await database.groups.find_one({"_id": int(group_id)}, {"users": 1})
-        if group is None:
-            return await message.answer("Такої групи не існує або невірне посилання!")
-        chat = await bot.get_chat(group_id)
-        for i in group["users"]:
-            if i["_id"] == message.chat.id:
-                return await message.answer(await YET_ADD.render_async(groupname=chat.title))
-        user = await database.users.find_one({"_id": message.chat.id})
-        if user is not None:
-            group_id = decode_payload(command.args)
-            chat = await bot.get_chat(group_id)
-            await database.users.update_one({"_id": message.chat.id}, {"$push": {"groups": int(group_id)}})
-            await database.groups.update_one({"_id": int(group_id)}, {"$push": {"users": {
-                "_id": message.chat.id,
-                "username": message.chat.full_name,
-                "timezone": user["timezone"],
-                "birthday": user["birthday"],
-                "birthday_str": user["birthday_str"]
-            }}})
-            is_admin = any(admin.user.id == message.chat.id for admin in (await bot.get_chat_administrators(group_id)))
-            return await message.answer(await SUCCESS_ADD.render_async(groupname=chat.title, is_admin=is_admin),
-                                        parse_mode="HTML")
-        await state.set_state(Form.year)
-        await message.answer(await ADD.render_async(groupname=chat.title), parse_mode="HTML")
-        return await message.answer(YEAR)
-    return await message.answer(START)
-
-
-@router.message(Command(commands=["help"]))
-async def help_commands(message: types.Message):
-    return await message.answer(HELP)
-
-
-@router.message(Command(commands=["reset"]))
-async def reset(message: types.Message):
-    return await message.answer(RESET, reply_markup=submit)
-
-
-@router.message(Command(commands=["calendar"]))
-async def calendar(message: types.Message, bot: Bot, database: Any):
-    user = await database.users.find_one({"_id": message.chat.id})
-    if "groups" not in user or len(user["groups"]) == 0:
-        return await message.answer("Ви не зареєстровані у жодній групі.")
-    builder = InlineKeyboardBuilder()
-    for i in user["groups"]:
-        chat = await bot.get_chat(i)
-        builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="calendar", value=i))
-    builder.adjust(2)
-    return await message.answer("Оберіть групу:", reply_markup=builder.as_markup())
-
-
-@router.message(Command(commands=["removeme"]))
-async def removeme(message: types.Message, bot: Bot, database: Any):
-    user = await database.users.find_one({"_id": message.chat.id})
-    if "groups" not in user or len(user["groups"]) == 0:
-        return await message.answer("Ви не зареєстровані у жодній групі.")
-    builder = InlineKeyboardBuilder()
-    for i in user["groups"]:
-        try:
-            chat = await bot.get_chat(i)
-            builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="delete", value=i).pack())
-        except Exception as err:
-            logging.error(err)
-    builder.button(text="Видалити з усіх груп", callback_data=NumbersCallbackFactory(action="delete", value="all"))
-    builder.adjust(2, len(user["groups"])//2)
-    return await message.answer(REMOVEME, reply_markup=builder.as_markup())
-
-
-@router.callback_query(Text("submit"))
-async def submit_change(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
-    await state.clear()
-    await state.set_state(Form.year)
-    await state.update_data(update=True)
-    await bot.send_message(callback.from_user.id, YEAR, reply_markup=ReplyKeyboardRemove())
-
-
-@router.callback_query(NumbersCallbackFactory.filter(F.action == "calendar"))
-async def print_dates(callback: types.CallbackQuery, database: Any, callback_data: NumbersCallbackFactory, bot: Bot):
-    groupname = (await bot.get_chat(callback_data.value)).title
-    group = database.groups.aggregate([
-        {"$match": {"_id": callback_data.value}},
-        {"$unwind": "$users"},
-        {
-            "$replaceRoot": {
-                "newRoot": "$users"
-            }
-        },
-        {"$project": {
-            "_id": 1,
-            "username": 1,
-            "timezone": 1,
-            "birthday": 1,
-            "birthday_str": 1,
-            "day": {"$dayOfMonth": "$birthday"}
-        }},
-        {"$sort": {"day": 1}},
-        {"$group": {
-            "_id": {"month_str": "$birthday_str", "month": {"$month": "$birthday"}},
-            "users": {"$push": "$$ROOT"}
-        }},
-        {"$sort": {"_id.month": 1}}
-    ])
-    await callback.answer()
-    return await callback.message.answer(await CALENDAR.render_async(groupname=groupname, group=group),
-                                         parse_mode="HTML")
-
-
 @router.message(Form.year)
 async def get_year(message: types.Message, state: FSMContext):
     if not message.text.isdigit() or len(message.text) != 4:
@@ -283,3 +170,145 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
             return await message.answer(NOT_SUCCESS_USER, reply_markup=ReplyKeyboardRemove())
         await state.set_state(Form.town)
         await message.answer(TOWN, reply_markup=ReplyKeyboardRemove())
+
+
+@router.message(Command(commands=["start"]))
+async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
+    if command.args:
+        group_id = decode_payload(command.args)
+        await state.clear()
+        await state.update_data({"group_id": group_id})
+        group = await database.groups.find_one({"_id": int(group_id)}, {"users": 1})
+        if group is None:
+            return await message.answer("Такої групи не існує або невірне посилання!")
+        chat = await bot.get_chat(group_id)
+        for i in group["users"]:
+            if i["_id"] == message.chat.id:
+                return await message.answer(await YET_ADD.render_async(groupname=chat.title))
+        user = await database.users.find_one({"_id": message.chat.id})
+        if user is not None:
+            group_id = decode_payload(command.args)
+            chat = await bot.get_chat(group_id)
+            await database.users.update_one({"_id": message.chat.id}, {"$push": {"groups": int(group_id)}})
+            await database.groups.update_one({"_id": int(group_id)}, {"$push": {"users": {
+                "_id": message.chat.id,
+                "username": message.chat.full_name,
+                "timezone": user["timezone"],
+                "birthday": user["birthday"],
+                "birthday_str": user["birthday_str"]
+            }}})
+            is_admin = any(admin.user.id == message.chat.id for admin in (await bot.get_chat_administrators(group_id)))
+            return await message.answer(await SUCCESS_ADD.render_async(groupname=chat.title, is_admin=is_admin),
+                                        parse_mode="HTML")
+        await state.set_state(Form.year)
+        await message.answer(await ADD.render_async(groupname=chat.title), parse_mode="HTML")
+        return await message.answer(YEAR)
+    return await message.answer(START)
+
+
+@router.message(Command(commands=["help"]))
+async def help_commands(message: types.Message):
+    return await message.answer(HELP)
+
+
+@router.message(Command(commands=["reset"]))
+async def reset(message: types.Message):
+    return await message.answer(RESET, reply_markup=submit)
+
+
+@router.message(Command(commands=["calendar"]))
+async def calendar(message: types.Message, bot: Bot, database: Any):
+    user = await database.users.find_one({"_id": message.chat.id})
+    if user is None:
+        return await message.answer("Ви не зареєстровані у боті")
+    if "groups" not in user or len(user["groups"]) == 0:
+        return await message.answer("Ви не зареєстровані у жодній групі.")
+    builder = InlineKeyboardBuilder()
+    for i in user["groups"]:
+        chat = await bot.get_chat(i)
+        builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="calendar", value=i))
+    builder.adjust(2)
+    return await message.answer("Оберіть групу:", reply_markup=builder.as_markup())
+
+
+@router.message(Command(commands=["removeme"]))
+async def removeme(message: types.Message, bot: Bot, database: Any):
+    user = await database.users.find_one({"_id": message.chat.id})
+    if user is None:
+        return await message.answer("Ви не зареєстровані у боті")
+    if "groups" not in user or len(user["groups"]) == 0:
+        return await message.answer("Ви не зареєстровані у жодній групі.")
+    builder = InlineKeyboardBuilder()
+    for i in user["groups"]:
+        try:
+            chat = await bot.get_chat(i)
+            builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="remove", value=i).pack())
+        except Exception as err:
+            logging.error(err)
+    builder.button(text="Видалити з усіх груп", callback_data=NumbersCallbackFactory(action="remove", value="all"))
+    builder.adjust(2, len(user["groups"]) // 2)
+    return await message.answer(REMOVEME, reply_markup=builder.as_markup())
+
+
+@router.callback_query(Text("submit"))
+async def submit_change(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
+    await state.clear()
+    await state.set_state(Form.year)
+    await state.update_data(update=True)
+    await bot.send_message(callback.from_user.id, YEAR, reply_markup=ReplyKeyboardRemove())
+
+
+@router.callback_query(NumbersCallbackFactory.filter(F.action == "calendar"))
+async def print_dates(callback: types.CallbackQuery, database: Any, callback_data: NumbersCallbackFactory, bot: Bot):
+    groupname = (await bot.get_chat(callback_data.value)).title
+    group = database.groups.aggregate([
+        {"$match": {"_id": callback_data.value}},
+        {"$unwind": "$users"},
+        {
+            "$replaceRoot": {
+                "newRoot": "$users"
+            }
+        },
+        {"$project": {
+            "_id": 1,
+            "username": 1,
+            "timezone": 1,
+            "birthday": 1,
+            "birthday_str": 1,
+            "day": {"$dayOfMonth": "$birthday"}
+        }},
+        {"$sort": {"day": 1}},
+        {"$group": {
+            "_id": {"month_str": "$birthday_str", "month": {"$month": "$birthday"}},
+            "users": {"$push": "$$ROOT"}
+        }},
+        {"$sort": {"_id.month": 1}}
+    ])
+    await callback.answer()
+    return await callback.message.answer(await CALENDAR.render_async(groupname=groupname, group=group),
+                                         parse_mode="HTML")
+
+
+@router.callback_query(NumbersCallbackFactory.filter(F.action == "remove"))
+async def remove(callback: types.CallbackQuery, database: Any, callback_data: NumbersCallbackFactory, bot: Bot):
+    if callback_data.value != "all":
+        groupname = (await bot.get_chat(callback_data.value)).title
+        await database.groups.update_one({"_id": callback_data.value}, {
+            "$pull": {
+                "users": {"_id": callback.message.chat.id}
+            }
+        })
+        await database.users.update_one({"_id": callback.message.chat.id}, {
+            "$pull": {
+                "groups": callback_data.value
+            }
+        })
+        return await callback.message.answer(await REMOVE.render_async(groupname=groupname))
+    else:
+        await database.groups.update_many({}, {
+            "$pull": {
+                "users": {"_id": callback.message.chat.id}
+            }
+        })
+        await database.users.delete_one({"_id": callback.message.chat.id})
+        return await callback.message.answer(REMOVEALL)

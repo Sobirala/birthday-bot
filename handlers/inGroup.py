@@ -30,6 +30,10 @@ async def delete_bot(message: types.Message, bot: Bot, database: Any):
     bot_id = (await bot.get_me()).id
     if message.left_chat_member.id == bot_id:
         await database.groups.delete_one({"_id": message.chat.id})
+        await database.users.update_many({}, {"$pull": {"groups": message.chat.id}})
+    elif not message.left_chat_member.is_bot:
+        await database.groups.update_one({"_id": message.chat.id}, {"$pull": {"users": {"_id": message.left_chat_member.id}}})
+        await database.users.update_one({"_id": message.left_chat_member.id}, {"$pull": {"groups": message.chat.id}})
 
 
 @router.message(Command(commands=["start"]))
