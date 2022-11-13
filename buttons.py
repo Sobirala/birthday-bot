@@ -3,13 +3,13 @@ from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup, InlineKeybo
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 
-async def generate_referral_button(url: str):
+async def generate_referral_button(url: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Додай свій день народження в календар", url=url)]
     ])
 
 
-async def get_month_keyboard(months: List[str]):
+async def get_month_keyboard(months: List[str]) -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
     for i in months:
         builder.add(KeyboardButton(text=str(i)))
@@ -17,16 +17,11 @@ async def get_month_keyboard(months: List[str]):
     return builder.as_markup(resize_keyboard=True)
 
 
-async def get_gender_keyboard(genders: List[str]):
+async def get_gender_keyboard(genders: List[str]) -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
-    builder.row(
-        KeyboardButton(text=genders[0]),
-        KeyboardButton(text=genders[1])
-    )
-    if len(genders) >= 3:
-        builder.row(
-            KeyboardButton(text=genders[2])
-        )
+    for gender in genders:
+        builder.button(text=gender)
+    builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -36,4 +31,4 @@ submit = InlineKeyboardMarkup(inline_keyboard=[
 
 confirm_keyboard = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text="Так"), KeyboardButton(text="Ні")]
-])
+], resize_keyboard=True)
