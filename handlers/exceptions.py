@@ -11,7 +11,7 @@ if environ["DEBUG"] == "1":
 
     @router.message(F.chat.func(lambda chat: chat.id != int(environ["ADMIN"])))
     async def test(message: types.Message):
-        return message.answer("Технічні роботи")
+        return await message.answer("Технічні роботи")
 
 
 @router.message(~F.text)
