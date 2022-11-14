@@ -1,4 +1,4 @@
-FROM python:3.11-slim as compiler
+FROM pypy:3.9-7.3.9-slim as compiler
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -8,24 +8,24 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app/
 
-RUN python -m venv /opt/venv
+RUN pypy -m venv /opt/venv
 # Enable venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade pip
-RUN python -m pip install --upgrade pip
+RUN pypy -m pip install --upgrade pip
 
 # Install build essentials
 RUN apt-get update \
 && apt-get install gcc -y \
 && apt-get clean
-RUN python -m pip install wheel
+RUN pypy -m pip install wheel
 
 # Install pip requirements
 COPY requirements.txt /app/requirements.txt
-RUN python -m pip install -r requirements.txt
+RUN pypy -m pip install -r requirements.txt
 
-FROM python:3.11-slim as runner
+FROM pypy:3.9-7.3.9-slim as runner
 
 WORKDIR /app/
 COPY --from=compiler /opt/venv /opt/venv
@@ -40,4 +40,4 @@ RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /
 USER appuser
 
 # During debugging, this entry point will be overridden.
-CMD ["python", "main.py"]
+CMD ["pypy", "main.py"]

@@ -11,8 +11,6 @@ services:
     depends_on:
       - redis
       - mongo
-    env_file:
-      - ".env"
 
   redis:
     image: redis:7.0.5-alpine
