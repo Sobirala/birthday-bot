@@ -238,7 +238,6 @@ celerybeat.pid
 
 # Environments
 .env
-stack.env
 .venv
 env/
 venv/
