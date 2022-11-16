@@ -60,5 +60,4 @@ Don't worry because I can to be default member of chat and I don't read message 
 - /removme - видалити дані про себе / delete information about yourself
 
 ### Donate
-- /donate - допомогти проекту / donate to help evolve project
 - /collect - увімкнути чи вимкнути збори грошей (тільки для адміністраторів групи) / to on or to off collection of money (the command unlocked for administrator)
