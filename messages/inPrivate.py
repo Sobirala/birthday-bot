@@ -143,7 +143,7 @@ CALENDAR = environment.from_string("""
 
 <b>{{ month._id.month_str }}</b>
 {% for user in month["users"] %}
-<a href="tg://user?id={{ user._id }}">{{ user.username }}</a>, {{ format_datetime(user.birthday, "d MMMM", locale="uk_UA") }} [{{ user.timezone }}]
+<a href="tg://user?id={{ user._id }}">{{ user.fullname }}</a>, {{ format_datetime(user.birthday, "d MMMM", locale="uk_UA") }} [{{ user.timezone }}]
 {% endfor %}
 {% endfor %}
 """)
