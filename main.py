@@ -9,7 +9,7 @@ from redis import asyncio as aioredis
 from config import TGBotConfig
 from handlers import inGroup, inPrivate, exceptions
 from middlewares import ConfigVariables
-from sheduler import Sheduler
+from scheduler import Scheduler
 
 logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s', level=logging.DEBUG)
 
@@ -29,7 +29,7 @@ async def main():
     client = motor.motor_asyncio.AsyncIOMotorClient(config.MONGO_URL)
     db = client.birthdays
 
-    scheduler = Sheduler(bot, db)
+    scheduler = Scheduler(bot, db)
     await scheduler.start()
 
     dp.message.middleware(ConfigVariables(db))
