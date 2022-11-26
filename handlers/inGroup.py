@@ -24,10 +24,10 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
                     "collect": False,
                     "users": []
                 })
-            await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=keyboard)
+            await message.answer(FIRST_ADD, reply_markup=keyboard)
         elif not new_member.is_bot:
-            await message.answer(await ADD_MEMBER.render_async(username=new_member.full_name, id=new_member.id),
-                                 parse_mode="HTML", reply_markup=keyboard)
+            await message.answer(await ADD_MEMBER.render_async(fullname=new_member.full_name, id=new_member.id),
+                                 reply_markup=keyboard)
 
 
 @router.message(F.content_type.in_({types.ContentType.LEFT_CHAT_MEMBER}))
@@ -53,12 +53,12 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
         })
     link = await create_start_link(bot, payload=str(message.chat.id), encode=True)
     keyboard = await generate_referral_button(link)
-    return await message.answer(FIRST_ADD, parse_mode="HTML", reply_markup=keyboard)
+    return await message.answer(FIRST_ADD, reply_markup=keyboard)
 
 
 @router.message(Command(commands=["calendar", "removeme", "help", "reset"]))
 async def calendar(message: types.Message, bot: Bot):
-    return await message.reply(await NOT_COMMAND.render_async(link=(await bot.get_me()).username), parse_mode="HTML")
+    return await message.reply(await NOT_COMMAND.render_async(link=(await bot.get_me()).username))
 
 
 @router.message(Command(commands=["collect"]))
@@ -78,4 +78,4 @@ async def collect(message: types.Message, database: Any):
             }
         })
         result = "деактивовано"
-    return await message.answer(f"Збір грошей на ДР <b>{result}</b>.", parse_mode="HTML")
+    return await message.answer(f"Збір грошей на ДР <b>{result}</b>.")

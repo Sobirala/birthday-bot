@@ -1,23 +1,22 @@
+import logging
+from datetime import datetime
+from functools import partial
+from os import environ
 from typing import Any
+
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command, CommandObject, Text
+from aiogram.fsm.context import FSMContext
+from aiogram.types.reply_keyboard_remove import ReplyKeyboardRemove
 from aiogram.utils.deep_linking import decode_payload
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.fsm.context import FSMContext
-from datetime import datetime
-from aiogram.types.reply_keyboard_remove import ReplyKeyboardRemove
-from geopy.geocoders import GoogleV3
 from geopy.adapters import AioHTTPAdapter
-from functools import partial
-import aiohttp
-from babel.dates import get_timezone
-import logging
+from geopy.geocoders import GoogleV3
 
-from os import environ
-from messages.inPrivate import *
-from states import *
 from buttons import get_gender_keyboard, get_month_keyboard, submit, confirm_keyboard
 from callbacks import NumbersCallbackFactory
+from messages.inPrivate import *
+from states import *
 
 router = Router()
 router.message.filter(F.chat.type.in_({"private"}))
@@ -97,23 +96,15 @@ async def get_town(message: types.Message, state: FSMContext):
     ) as geolocator:
         geocode = partial(geolocator.geocode, language="uk")
         address = await geocode(message.text)
+
+        timezone = (await geolocator.reverse_timezone(address.point)).pytz_timezone
+        today = datetime.utcnow()
+        date = format_datetime(today, "d MMMM Y", locale='uk_UA', tzinfo=timezone)
+        time = format_datetime(today, "H:mm", tzinfo=timezone)
     if address is None:
         return await message.answer(NOT_TOWN, reply_markup=ReplyKeyboardRemove())
-    await state.update_data(town=address.address)
-    url = "https://timezonefinder.michelfe.it/api/{}_{}_{}".format(0, address.longitude, address.latitude)
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            try:
-                tz_info = await response.json(content_type='application/javascript')
-
-                today = datetime.utcnow()
-                date = format_datetime(today, "d MMMM Y", locale='uk_UA')
-                time = format_datetime(today, "H:mm", tzinfo=get_timezone(tz_info["tz_name"]))
-            except Exception as e:
-                logging.error(e)
-                date = "ERROR"
-                time = "ERROR"
-    await state.update_data({"timezone": tz_info["tz_name"]})
+    await state.update_data({"town": address.address})
+    await state.update_data({"timezone": str(timezone)})
     await state.set_state(Form.confirm)
     await message.answer(await SUCCESS_TOWN.render_async(address=address, date=date, time=time),
                          reply_markup=confirm_keyboard)
@@ -130,7 +121,8 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
             return await message.answer(NOT_SUCCESS_TOWN, reply_markup=ReplyKeyboardRemove())
         user = {
             "_id": message.chat.id,
-            "username": message.chat.full_name,
+            "fullname": message.chat.full_name,
+            "username": message.chat.username,
             "gender": data["gender"],
             "address": data["town"],
             "timezone": data["timezone"],
@@ -143,7 +135,8 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
             await database.users.insert_one(user)
             await database.groups.update_one({"_id": int(data["group_id"])}, {"$push": {"users": {
                 "_id": message.chat.id,
-                "username": message.chat.full_name,
+                "fullname": message.chat.full_name,
+                "username": message.chat.username,
                 "timezone": data["timezone"],
                 "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
                 "birthday_str": f"{data['month']}"
@@ -157,7 +150,8 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
             await database.users.update_one({"_id": message.chat.id}, {"$set": user}, upsert=True)
             await database.groups.update_many({"users._id": message.chat.id}, {"$set": {"users.$": {
                 "_id": message.chat.id,
-                "username": message.chat.full_name,
+                "fullname": message.chat.full_name,
+                "username": message.chat.username,
                 "timezone": data["timezone"],
                 "birthday": datetime(data["year"], MONTHS[data["month"]]["number"], data["day"]),
                 "birthday_str": f"{data['month']}"
@@ -192,16 +186,15 @@ async def start(message: types.Message, bot: Bot, state: FSMContext, command: Co
             await database.users.update_one({"_id": message.chat.id}, {"$push": {"groups": int(group_id)}})
             await database.groups.update_one({"_id": int(group_id)}, {"$push": {"users": {
                 "_id": message.chat.id,
-                "username": message.chat.full_name,
+                "fullname": message.chat.full_name,
                 "timezone": user["timezone"],
                 "birthday": user["birthday"],
                 "birthday_str": user["birthday_str"]
             }}})
             is_admin = any(admin.user.id == message.chat.id for admin in (await bot.get_chat_administrators(group_id)))
-            return await message.answer(await SUCCESS_ADD.render_async(groupname=chat.title, is_admin=is_admin),
-                                        parse_mode="HTML")
+            return await message.answer(await SUCCESS_ADD.render_async(groupname=chat.title, is_admin=is_admin))
         await state.set_state(Form.year)
-        await message.answer(await ADD.render_async(groupname=chat.title), parse_mode="HTML")
+        await message.answer(await ADD.render_async(groupname=chat.title))
         return await message.answer(YEAR)
     return await message.answer(START)
 
@@ -271,7 +264,7 @@ async def print_dates(callback: types.CallbackQuery, database: Any, callback_dat
         },
         {"$project": {
             "_id": 1,
-            "username": 1,
+            "fullname": 1,
             "timezone": 1,
             "birthday": 1,
             "birthday_str": 1,
@@ -285,8 +278,7 @@ async def print_dates(callback: types.CallbackQuery, database: Any, callback_dat
         {"$sort": {"_id.month": 1}}
     ])
     await callback.answer()
-    return await callback.message.answer(await CALENDAR.render_async(groupname=groupname, group=group),
-                                         parse_mode="HTML")
+    return await callback.message.answer(await CALENDAR.render_async(groupname=groupname, group=group))
 
 
 @router.callback_query(NumbersCallbackFactory.filter(F.action == "remove"))

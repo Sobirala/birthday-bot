@@ -1,5 +1,5 @@
 aiofiles>=22.1.0
-aiogram>=3.0.0b5
+aiogram>=3.0.0b6
 aiohttp>=3.8.3
 aiosignal>=1.2.0
 async-timeout>=4.0.2
@@ -26,3 +26,4 @@ tzdata>=2022.5
 wrapt>=1.14.1
 yarl>=1.8.1
 Jinja2>=3.1.2
+aioschedule>=0.5.2
