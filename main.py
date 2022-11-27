@@ -29,8 +29,8 @@ async def main():
     client = motor.motor_asyncio.AsyncIOMotorClient(config.MONGO_URL)
     db = client.birthdays
 
-    # scheduler = Scheduler(bot, db)
-    # await scheduler.start()
+    scheduler = Scheduler(bot, db)
+    await scheduler.start()
 
     dp.message.middleware(ConfigVariables(db))
     dp.callback_query.middleware(ConfigVariables(db))
