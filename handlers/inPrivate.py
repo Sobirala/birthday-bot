@@ -1,7 +1,6 @@
-import logging
+from loguru import logger
 from datetime import datetime
 from functools import partial
-from os import environ
 from typing import Any
 
 from aiogram import Bot, types, Router, F
@@ -15,6 +14,7 @@ from geopy.geocoders import GoogleV3
 
 from buttons import get_gender_keyboard, get_month_keyboard, submit, confirm_keyboard
 from callbacks import NumbersCallbackFactory
+from config import Settings
 from messages.inPrivate import *
 from states import *
 
@@ -86,10 +86,9 @@ async def get_gender(message: types.Message, state: FSMContext):
 
 
 @router.message(Form.town)
-async def get_town(message: types.Message, state: FSMContext):
-    api_token = environ["GOOGLE_TOKEN"]
+async def get_town(message: types.Message, state: FSMContext, config: Settings):
     async with GoogleV3(
-            api_key=api_token,
+            api_key=config.GOOGLE_TOKEN.get_secret_value(),
             user_agent="birthday_bot",
             adapter_factory=AioHTTPAdapter,
             timeout=1000,
@@ -233,11 +232,9 @@ async def removeme(message: types.Message, bot: Bot, database: Any):
         return await message.answer("Ви не зареєстровані у жодній групі.")
     builder = InlineKeyboardBuilder()
     for i in user["groups"]:
-        try:
+        with logger.catch(message="Chat not found: "):
             chat = await bot.get_chat(i)
             builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="remove", value=i).pack())
-        except Exception as err:
-            logging.error(err)
     builder.button(text="Видалити з усіх груп", callback_data=NumbersCallbackFactory(action="remove", value="all"))
     builder.adjust(2, len(user["groups"]) // 2)
     return await message.answer(REMOVEME, reply_markup=builder.as_markup())

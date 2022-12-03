@@ -1,16 +1,18 @@
-from os import environ
-from typing import Final
+from pydantic import BaseSettings, SecretStr, Field
 
 
-class TGBotConfig:
-    try:
-        TOKEN: Final = environ["BOT_TOKEN"]
-        MONGO_URL: Final = environ["MONGO_URL"]
-        REDIS_HOST: Final = environ["REDIS_HOST"]
-        REDIS_PORT: int = environ["REDIS_PORT"]
-        REDIS_USERNAME: Final = environ["REDIS_USERNAME"]
-        REDIS_PASSWORD: Final = environ["REDIS_PASSWORD"]
-        REDIS_DB: int = environ["REDIS_DB"]
-        GOOGLE_TOKEN: Final = environ["GOOGLE_TOKEN"]
-    except Exception as key:
-        raise RuntimeError(f"{key} must be defined!")
+class Settings(BaseSettings):
+    TOKEN: SecretStr = Field(..., env="BOT_TOKEN")
+    ADMINS: list[int]
+    LOGLEVEL: str = "DEBUG"
+    MONGO_URL: SecretStr
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_USERNAME: str
+    REDIS_PASSWORD: SecretStr
+    REDIS_DB: int
+    GOOGLE_TOKEN: SecretStr
+
+    class Config:
+        env_file = "stack.env"
+        env_file_encoding = "utf-8"

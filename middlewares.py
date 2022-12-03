@@ -1,11 +1,13 @@
-import logging
+from loguru import logger
 from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware, types
+from config import Settings
 
 
 class ConfigVariables(BaseMiddleware):
-    def __init__(self, database) -> None:
+    def __init__(self, database: Any, config: Settings) -> None:
         self.database = database
+        self.config = config
 
     async def __call__(
             self,
@@ -13,6 +15,7 @@ class ConfigVariables(BaseMiddleware):
             event: types.Message,
             data: Dict[str, Any]
     ) -> Any:
-        logging.debug(event)
-        data['database'] = self.database
+        logger.info(event)
+        data["config"] = self.config
+        data["database"] = self.database
         return await handler(event, data)
