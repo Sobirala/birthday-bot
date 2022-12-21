@@ -1,5 +1,6 @@
-from aiogram.filters.callback_data import CallbackData
 from typing import Union
+
+from aiogram.filters.callback_data import CallbackData
 
 
 class NumbersCallbackFactory(CallbackData, prefix="fabnum"):

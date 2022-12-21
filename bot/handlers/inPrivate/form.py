@@ -1,25 +1,21 @@
-from loguru import logger
 from datetime import datetime
 from functools import partial
-from typing import Any
 
-from aiogram import Bot, types, Router, F
-from aiogram.filters import Command, CommandObject, Text
+from aiogram import Bot, types, Router
+from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types.reply_keyboard_remove import ReplyKeyboardRemove
 from aiogram.utils.deep_linking import decode_payload
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from geopy.adapters import AioHTTPAdapter
 from geopy.geocoders import GoogleV3
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from buttons import get_gender_keyboard, get_month_keyboard, submit, confirm_keyboard
-from callbacks import NumbersCallbackFactory
-from config import Settings
-from messages.inPrivate import *
-from states import *
+from bot.buttons import get_gender_keyboard, get_month_keyboard, confirm_keyboard
+from bot.config import Settings
+from bot.messages.inPrivate import *
+from bot.states import *
 
 router = Router()
-router.message.filter(F.chat.type.in_({"private"}))
 
 MONTHS = {"Січень": {"number": 1, "days": 31},
           "Лютий": {"number": 2, "days": 28},
@@ -55,7 +51,7 @@ async def get_month(message: types.Message, state: FSMContext):
         return await message.answer(NOT_MONTH)
     await state.update_data(month=message.text)
     await state.set_state(Form.day)
-    return await message.answer(DAY, reply_markup=ReplyKeyboardRemove())
+    return await message.answer(DAY)
 
 
 @router.message(Form.day)
@@ -101,7 +97,7 @@ async def get_town(message: types.Message, state: FSMContext, config: Settings):
         date = format_datetime(today, "d MMMM Y", locale='uk_UA', tzinfo=timezone)
         time = format_datetime(today, "H:mm", tzinfo=timezone)
     if address is None:
-        return await message.answer(NOT_TOWN, reply_markup=ReplyKeyboardRemove())
+        return await message.answer(NOT_TOWN)
     await state.update_data({"town": address.address})
     await state.update_data({"timezone": str(timezone)})
     await state.set_state(Form.confirm)
@@ -110,14 +106,14 @@ async def get_town(message: types.Message, state: FSMContext, config: Settings):
 
 
 @router.message(Form.confirm)
-async def confirm(message: types.Message, state: FSMContext, bot: Bot, database: Any):
+async def confirm(message: types.Message, state: FSMContext, bot: Bot, database: AsyncIOMotorDatabase):
     if message.text not in ['Так', 'Ні']:
         return await message.answer(NOT_SUCCESS)
     data = await state.get_data()
     if 'town' in data:
         if message.text == "Ні":
             await state.set_state(Form.town)
-            return await message.answer(NOT_SUCCESS_TOWN, reply_markup=ReplyKeyboardRemove())
+            return await message.answer(NOT_SUCCESS_TOWN)
         user = {
             "_id": message.chat.id,
             "fullname": message.chat.full_name,
@@ -156,17 +152,18 @@ async def confirm(message: types.Message, state: FSMContext, bot: Bot, database:
                 "birthday_str": f"{data['month']}"
             }}})
             await state.clear()
-            return await message.answer("Ваші дані оновлено.", reply_markup=ReplyKeyboardRemove())
+            return await message.answer("Ваші дані оновлено.")
     elif 'gender' in data:
         if message.text == "Ні":
             await state.set_state(Form.year)
-            return await message.answer(NOT_SUCCESS_USER, reply_markup=ReplyKeyboardRemove())
+            return await message.answer(NOT_SUCCESS_USER)
         await state.set_state(Form.town)
-        await message.answer(TOWN, reply_markup=ReplyKeyboardRemove())
+        await message.answer(TOWN)
 
 
 @router.message(Command(commands=["start"]))
-async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject, database: Any):
+async def start(message: types.Message, bot: Bot, state: FSMContext, command: CommandObject,
+                database: AsyncIOMotorDatabase):
     if command.args:
         group_id = decode_payload(command.args)
         await state.clear()
@@ -196,108 +193,3 @@ async def start(message: types.Message, bot: Bot, state: FSMContext, command: Co
         await message.answer(await ADD.render_async(groupname=chat.title))
         return await message.answer(YEAR)
     return await message.answer(START)
-
-
-@router.message(Command(commands=["help"]))
-async def help_commands(message: types.Message):
-    return await message.answer(HELP)
-
-
-@router.message(Command(commands=["reset"]))
-async def reset(message: types.Message):
-    return await message.answer(RESET, reply_markup=submit)
-
-
-@router.message(Command(commands=["calendar"]))
-async def calendar(message: types.Message, bot: Bot, database: Any):
-    user = await database.users.find_one({"_id": message.chat.id})
-    if user is None:
-        return await message.answer("Ви не зареєстровані у боті")
-    if "groups" not in user or len(user["groups"]) == 0:
-        return await message.answer("Ви не зареєстровані у жодній групі.")
-    builder = InlineKeyboardBuilder()
-    for i in user["groups"]:
-        chat = await bot.get_chat(i)
-        builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="calendar", value=i))
-    builder.adjust(2)
-    return await message.answer("Оберіть групу:", reply_markup=builder.as_markup())
-
-
-@router.message(Command(commands=["removeme"]))
-async def removeme(message: types.Message, bot: Bot, database: Any):
-    user = await database.users.find_one({"_id": message.chat.id})
-    if user is None:
-        return await message.answer("Ви не зареєстровані у боті")
-    if "groups" not in user or len(user["groups"]) == 0:
-        return await message.answer("Ви не зареєстровані у жодній групі.")
-    builder = InlineKeyboardBuilder()
-    for i in user["groups"]:
-        with logger.catch(message="Chat not found: "):
-            chat = await bot.get_chat(i)
-            builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="remove", value=i).pack())
-    builder.button(text="Видалити з усіх груп", callback_data=NumbersCallbackFactory(action="remove", value="all"))
-    builder.adjust(2, len(user["groups"]) // 2)
-    return await message.answer(REMOVEME, reply_markup=builder.as_markup())
-
-
-@router.callback_query(Text("submit"))
-async def submit_change(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
-    await state.clear()
-    await state.set_state(Form.year)
-    await state.update_data(update=True)
-    await bot.send_message(callback.from_user.id, YEAR, reply_markup=ReplyKeyboardRemove())
-
-
-@router.callback_query(NumbersCallbackFactory.filter(F.action == "calendar"))
-async def print_dates(callback: types.CallbackQuery, database: Any, callback_data: NumbersCallbackFactory, bot: Bot):
-    groupname = (await bot.get_chat(callback_data.value)).title
-    group = database.groups.aggregate([
-        {"$match": {"_id": callback_data.value}},
-        {"$unwind": "$users"},
-        {
-            "$replaceRoot": {
-                "newRoot": "$users"
-            }
-        },
-        {"$project": {
-            "_id": 1,
-            "fullname": 1,
-            "timezone": 1,
-            "birthday": 1,
-            "birthday_str": 1,
-            "day": {"$dayOfMonth": "$birthday"}
-        }},
-        {"$sort": {"day": 1}},
-        {"$group": {
-            "_id": {"month_str": "$birthday_str", "month": {"$month": "$birthday"}},
-            "users": {"$push": "$$ROOT"}
-        }},
-        {"$sort": {"_id.month": 1}}
-    ])
-    await callback.answer()
-    return await callback.message.answer(await CALENDAR.render_async(groupname=groupname, group=group))
-
-
-@router.callback_query(NumbersCallbackFactory.filter(F.action == "remove"))
-async def remove(callback: types.CallbackQuery, database: Any, callback_data: NumbersCallbackFactory, bot: Bot):
-    if callback_data.value != "all":
-        groupname = (await bot.get_chat(callback_data.value)).title
-        await database.groups.update_one({"_id": callback_data.value}, {
-            "$pull": {
-                "users": {"_id": callback.message.chat.id}
-            }
-        })
-        await database.users.update_one({"_id": callback.message.chat.id}, {
-            "$pull": {
-                "groups": callback_data.value
-            }
-        })
-        return await callback.message.answer(await REMOVE.render_async(groupname=groupname))
-    else:
-        await database.groups.update_many({}, {
-            "$pull": {
-                "users": {"_id": callback.message.chat.id}
-            }
-        })
-        await database.users.delete_one({"_id": callback.message.chat.id})
-        return await callback.message.answer(REMOVEALL)

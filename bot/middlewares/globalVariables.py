@@ -1,11 +1,14 @@
-from loguru import logger
 from typing import Any, Awaitable, Callable, Dict
+
 from aiogram import BaseMiddleware, types
-from config import Settings
+from loguru import logger
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from bot.config import Settings
 
 
-class ConfigVariables(BaseMiddleware):
-    def __init__(self, database: Any, config: Settings) -> None:
+class GlobalVariables(BaseMiddleware):
+    def __init__(self, database: AsyncIOMotorDatabase, config: Settings) -> None:
         self.database = database
         self.config = config
 

@@ -1,5 +1,5 @@
-from jinja2 import Environment
 from babel.dates import format_datetime
+from jinja2 import Environment
 
 environment = Environment(trim_blocks=True, enable_async=True)
 

@@ -1,13 +1,13 @@
 import asyncio
-from loguru import logger
 from datetime import datetime, timedelta
 from typing import Any
-import pytz
 
+import pytz
 from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from loguru import logger
 
-from messages.sheduler import *
+from bot.messages.sheduler import *
 
 
 class Scheduler:
@@ -52,12 +52,13 @@ class Scheduler:
         }]
         today = self.database.users.aggregate(request)
         async for birthday in today:
-            congratulation = (await self.database.congratulations.aggregate([{ "$sample": { "size": 1 } }]).to_list(length=1))[0]
+            congratulation = \
+            (await self.database.congratulations.aggregate([{"$sample": {"size": 1}}]).to_list(length=1))[0]
             username = f'<a href="tg://user?id={birthday["_id"]}">{birthday["fullname"]}</a>'
             for group_id in birthday["groups"]:
                 with logger.catch(message=f"Message not sent to group: {group_id}"):
-                    await self.bot.send_document(group_id, congratulation["fileid"], caption=congratulation["message"].format(username=username))
-
+                    await self.bot.send_document(group_id, congratulation["fileid"],
+                                                 caption=congratulation["message"].format(username=username))
 
     async def tomorrow(self):
         request = [{

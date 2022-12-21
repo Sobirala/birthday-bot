@@ -1,10 +1,12 @@
+from typing import Optional
+
 from pydantic import BaseSettings, SecretStr, Field
 
 
 class Settings(BaseSettings):
     TOKEN: SecretStr = Field(..., env="BOT_TOKEN")
     ADMINS: list[int]
-    LOGLEVEL: str = "DEBUG"
+    LOGLEVEL: Optional[str] = "DEBUG"
     MONGO_URL: SecretStr
     REDIS_HOST: str
     REDIS_PORT: int

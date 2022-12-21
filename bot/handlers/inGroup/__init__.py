@@ -1,17 +1,17 @@
-from typing import Any
 from aiogram import types, Bot, Router, F
-from aiogram.utils.deep_linking import create_start_link
 from aiogram.filters import Command
+from aiogram.utils.deep_linking import create_start_link
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from messages.inGroup import *
-from buttons import generate_referral_button
+from bot.buttons import generate_referral_button
+from bot.messages.inGroup import *
 
 router = Router()
 router.message.filter(F.chat.type.in_({"group", "supergroup"}))
 
 
 @router.message(F.content_type.in_({types.ContentType.NEW_CHAT_MEMBERS}))
-async def check_channel(message: types.Message, bot: Bot, database: Any):
+async def check_channel(message: types.Message, bot: Bot, database: AsyncIOMotorDatabase):
     bot_id = (await bot.get_me()).id
     link = await create_start_link(bot, payload=str(message.chat.id), encode=True)
     keyboard = await generate_referral_button(link)
@@ -31,7 +31,7 @@ async def check_channel(message: types.Message, bot: Bot, database: Any):
 
 
 @router.message(F.content_type.in_({types.ContentType.LEFT_CHAT_MEMBER}))
-async def delete_bot(message: types.Message, bot: Bot, database: Any):
+async def delete_bot(message: types.Message, bot: Bot, database: AsyncIOMotorDatabase):
     bot_id = (await bot.get_me()).id
     if message.left_chat_member.id == bot_id:
         await database.groups.delete_one({"_id": message.chat.id})
@@ -43,7 +43,7 @@ async def delete_bot(message: types.Message, bot: Bot, database: Any):
 
 
 @router.message(Command(commands=["start"]))
-async def check_channel(message: types.Message, bot: Bot, database: Any):
+async def check_channel(message: types.Message, bot: Bot, database: AsyncIOMotorDatabase):
     if (await database.groups.count_documents({"_id": message.chat.id})) == 0:
         await database.groups.insert_one({
             "_id": message.chat.id,
@@ -62,7 +62,7 @@ async def calendar(message: types.Message, bot: Bot):
 
 
 @router.message(Command(commands=["collect"]))
-async def collect(message: types.Message, database: Any):
+async def collect(message: types.Message, database: AsyncIOMotorDatabase):
     group = await database.groups.find_one({"_id": message.chat.id}, {"collect": 1})
     if "collect" not in group or not group["collect"]:
         await database.groups.update_one({"_id": message.chat.id}, {

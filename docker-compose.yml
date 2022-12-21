@@ -15,7 +15,7 @@ services:
       - stack.env
 
   redis:
-    image: redis:7.0.5-alpine
+    image: redis:alpine
     restart: on-failure
     volumes:
       - redis-data:/data
@@ -27,6 +27,14 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo 10.10.10.60:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-}
   
 
 

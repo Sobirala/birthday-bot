@@ -1,43 +1,27 @@
-FROM python:3.11-slim as compiler
+ARG PYTHON_VERSION=3.11
+# build stage
+FROM python:${PYTHON_VERSION}-slim AS builder
 
-# Keeps Python from generating .pyc files in the container
-ENV PYTHONDONTWRITEBYTECODE=1
+# install PDM
+RUN pip install -U pip setuptools wheel
+RUN pip install pdm
 
-# Turns off buffering for easier container logging
-ENV PYTHONUNBUFFERED=1
+# copy files
+COPY pyproject.toml pdm.lock /bot/
 
-WORKDIR /app/
+# install dependencies and project into the local packages directory
+WORKDIR /bot
+RUN mkdir __pypackages__ && pdm install --prod --no-lock --no-editable
 
-RUN python -m venv /opt/venv
-# Enable venv
-ENV PATH="/opt/venv/bin:$PATH"
 
-# Upgrade pip
-RUN python -m pip install --upgrade pip
+# run stage
+FROM python:${PYTHON_VERSION}-slim
+ARG PYTHON_VERSION
 
-# Install build essentials
-RUN apt-get update \
-&& apt-get install gcc -y \
-&& apt-get clean
-RUN python -m pip install wheel
+# retrieve packages from build stage
+COPY bot/ /bot/
+ENV PYTHONPATH=/bot/pkgs
+COPY --from=builder /bot/__pypackages__/${PYTHON_VERSION}/lib /bot/pkgs
 
-# Install pip requirements
-COPY requirements.txt /app/requirements.txt
-RUN python -m pip install -r requirements.txt
-
-FROM python:3.11-slim as runner
-
-WORKDIR /app/
-COPY --from=compiler /opt/venv /opt/venv
-
-# Enable venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-COPY . /app
-
-# Creates a non-root user with an explicit UID and adds permission to access the /app folder
-RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
-USER appuser
-
-# During debugging, this entry point will be overridden.
-CMD ["python", "main.py"]
+# set command/entrypoint, adapt to fit your needs
+CMD ["python", "-m", "bot"]

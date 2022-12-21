@@ -1,4 +1,5 @@
 from typing import List
+
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup, InlineKeyboardButton, KeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
@@ -14,7 +15,7 @@ async def get_month_keyboard(months: List[str]) -> ReplyKeyboardMarkup:
     for i in months:
         builder.add(KeyboardButton(text=str(i)))
     builder.adjust(4)
-    return builder.as_markup(resize_keyboard=True)
+    return builder.as_markup(resize_keyboard=True, one_time_keyboard=True)
 
 
 async def get_gender_keyboard(genders: List[str]) -> ReplyKeyboardMarkup:
@@ -22,7 +23,7 @@ async def get_gender_keyboard(genders: List[str]) -> ReplyKeyboardMarkup:
     for gender in genders:
         builder.button(text=gender)
     builder.adjust(2)
-    return builder.as_markup(resize_keyboard=True)
+    return builder.as_markup(resize_keyboard=True, one_time_keyboard=True)
 
 
 submit = InlineKeyboardMarkup(inline_keyboard=[
@@ -31,4 +32,4 @@ submit = InlineKeyboardMarkup(inline_keyboard=[
 
 confirm_keyboard = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text="Так"), KeyboardButton(text="Ні")]
-], resize_keyboard=True)
+], resize_keyboard=True, one_time_keyboard=True)
