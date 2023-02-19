@@ -1,6 +1,7 @@
 from aiogram import Bot, types, Router, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from bot.callbacks import NumbersCallbackFactory
@@ -18,8 +19,9 @@ async def calendar(message: types.Message, bot: Bot, database: AsyncIOMotorDatab
         return await message.answer("Ви не зареєстровані у жодній групі.")
     builder = InlineKeyboardBuilder()
     for i in user["groups"]:
-        chat = await bot.get_chat(i)
-        builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="calendar", value=i))
+        with logger.catch(message=f"Chat not found { i }"):
+            chat = await bot.get_chat(i)
+            builder.button(text=chat.title, callback_data=NumbersCallbackFactory(action="calendar", value=i))
     builder.adjust(2)
     return await message.answer("Оберіть групу:", reply_markup=builder.as_markup())
 
