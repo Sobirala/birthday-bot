@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import List, Optional
 
-from pydantic import BaseSettings, SecretStr, Field
+from pydantic import BaseSettings, Field, SecretStr
 
 
 class Settings(BaseSettings):
     TOKEN: SecretStr = Field(..., env="BOT_TOKEN")
-    ADMINS: list[int]
+    ADMINS: List[int] = []
     LOGLEVEL: Optional[str] = "DEBUG"
     POSTGRES_HOST: str
     POSTGRES_PORT: int
