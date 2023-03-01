@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: "trailing-whitespace"
+      - id: "check-case-conflict"
+      - id: "check-merge-conflict"
+      - id: "debug-statements"
+      - id: "end-of-file-fixer"
+      - id: "mixed-line-ending"
+      - id: "detect-private-key"
+      - id: "check-yaml"
+      - id: "check-toml"
+      - id: "check-json"
+  - repo: https://github.com/pdm-project/pdm
+    rev: 2.4.6
+    hooks:
+      - id: pdm-export
+        args: [ '-o', 'requirements.txt', '--without-hashes', '--prod' ]
+        files: ^pdm.lock$

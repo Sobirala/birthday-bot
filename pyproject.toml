@@ -3,18 +3,20 @@
 test = [
     "pytest>=7.2.0",
     "pytest-asyncio>=0.20.3",
-    "tox>=4.0.16",
+]
+dev = [
+    "pre-commit>=3.1.1",
 ]
 
 [project]
-name = ""
-version = ""
+name = "Birthday Bot"
+version = "2.0b1"
 description = ""
 authors = [
-    {name = "Kulunchick", email = "nikolikrasovski@gmail.com"},
+    { name = "Kulunchick", email = "nikolikrasovski@gmail.com" },
 ]
 dependencies = [
-    "aiogram>=3.0.0b6",
+    "aiogram>=3.0.0b7",
     "redis>=4.3.4",
     "APScheduler>=3.9.1.post1",
     "geopy>=2.3.0",
@@ -26,6 +28,9 @@ dependencies = [
     "alembic>=1.9.2",
     "asyncpg>=0.27.0",
     "sqlalchemy>=2.0.1",
+    "fluentogram>=1.1.6",
+    "jinja2>=3.1.2",
+    "cachetools>=5.3.0",
 ]
-requires-python = ">=3.8"
-license = {text = "AGPL-3.0"}
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0" }

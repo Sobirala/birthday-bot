@@ -1,15 +1,13 @@
 import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, URL
-from sqlalchemy import pool
+from alembic import context
+from sqlalchemy import URL, engine_from_config, pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from alembic import context
-
-from bot.models import Base
 from bot.config import Settings
+from bot.models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -26,20 +24,22 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
-
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 settings = Settings()
-config.set_main_option("sqlalchemy.url", URL.create(
-    "postgresql+asyncpg",
-    username=settings.POSTGRES_USER,
-    password=settings.POSTGRES_PASSWORD.get_secret_value(),
-    host=settings.POSTGRES_HOST,
-    port=settings.POSTGRES_PORT,
-    database=settings.POSTGRES_DB
-).render_as_string(hide_password=False))
+config.set_main_option(
+    "sqlalchemy.url",
+    URL.create(
+        "postgresql+asyncpg",
+        username=settings.POSTGRES_USER,
+        password=settings.POSTGRES_PASSWORD.get_secret_value(),
+        host=settings.POSTGRES_HOST,
+        port=settings.POSTGRES_PORT,
+        database=settings.POSTGRES_DB,
+    ).render_as_string(hide_password=False),
+)
 
 
 def run_migrations_offline() -> None:
