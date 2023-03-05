@@ -16,6 +16,6 @@ class TranslatorRunnerMiddleware(BaseMiddleware):
             event: Update,
             data: Dict[str, Any],
     ) -> Any:
-        data["locale"] = "uk-UA"
-        data["i18n"] = self.translator("uk-UA")
+        data["locale"] = "uk_UA"
+        data["i18n"] = self.translator("uk_UA")
         return await handler(event, data)
