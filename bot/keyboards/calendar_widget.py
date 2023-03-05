@@ -6,6 +6,7 @@ from aiogram.filters import Text
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
+from babel.core import Locale
 from fluentogram import TranslatorRunner
 
 MAX_YEAR = 9999
@@ -83,14 +84,14 @@ class Calendar:
 
     @staticmethod
     async def _months_keyboard(year: int, locale: str) -> InlineKeyboardMarkup:
-        c = calendar.LocaleTextCalendar(calendar.MONDAY, (locale, None))
+        local = Locale.parse(locale)
 
         builder = InlineKeyboardBuilder()
         builder.button(text=f"{year}", callback_data=ChangeYear(year=year))
-        for i in range(1, 13):
+        for ind, month in local.months["stand-alone"]["wide"].items():
             builder.button(
-                text=c.formatmonthname(year, i, 15, False).strip().title(),
-                callback_data=SelectMonth(month=i, year=year),
+                text=month.title(),
+                callback_data=SelectMonth(month=ind, year=year),
             )
         builder.adjust(1, 3)
 
@@ -138,16 +139,17 @@ class Calendar:
     async def _month_keyboard(
             year: int, month: int, locale: str
     ) -> InlineKeyboardMarkup:
-        c = calendar.LocaleTextCalendar(calendar.MONDAY, (locale, None))
+        c = calendar.TextCalendar(calendar.MONDAY)
+        local = Locale.parse(locale)
 
         builder = InlineKeyboardBuilder()
         builder.button(
-            text=f"{c.formatmonthname(year, month, width=15, withyear=True).strip().title()}",
+            text=f"{local.months['stand-alone']['wide'][month].title()} {year}",
             callback_data=ChangeMonth(year=year),
         )
 
-        for i in range(7):
-            builder.button(text=c.formatweekday(i, width=3).strip(), callback_data=" ")
+        for _, weekday in sorted(local.days["stand-alone"]["abbreviated"].items()):
+            builder.button(text=weekday.title(), callback_data=" ")
 
         for i in c.itermonthdays(year, month):
             if i == 0:
