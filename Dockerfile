@@ -1,27 +1,23 @@
-ARG PYTHON_VERSION=3.11
+ARG PYTHON=3.11
 # build stage
-FROM python:${PYTHON_VERSION}-slim AS builder
+FROM python:${PYTHON}-slim AS builder
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends build-essential gcc
 
-# install PDM
-RUN pip install -U pip setuptools wheel
-RUN pip install pdm
+RUN python -m venv /opt/venv
+# Make sure we use the virtualenv:
+ENV PATH="/opt/venv/bin:$PATH"
 
-# copy files
-COPY pyproject.toml pdm.lock /bot/
-
-# install dependencies and project into the local packages directory
-WORKDIR /bot
-RUN mkdir __pypackages__ && pdm install --prod --no-lock --no-editable
-
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 # run stage
-FROM python:${PYTHON_VERSION}-slim
-ARG PYTHON_VERSION
-
-# retrieve packages from build stage
-COPY bot/ /bot/
-ENV PYTHONPATH=/bot/pkgs
-COPY --from=builder /bot/__pypackages__/${PYTHON_VERSION}/lib /bot/pkgs
-
-# set command/entrypoint, adapt to fit your needs
+FROM python:${PYTHON}-slim
+# RUN apt-get update && apt-get install -y locales locales-all
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+COPY bot/ bot/
+COPY locales/ locales/
+COPY migrations/ migrations/
+COPY alembic.ini .
 CMD ["python", "-m", "bot"]

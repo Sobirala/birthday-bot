@@ -1,0 +1,51 @@
+version: '3.4'
+
+services:
+  birthday-bot:
+    image: birthday-bot
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: bash -c "alembic upgrade heads && python -m bot"
+    restart: on-failure
+    stop_signal: SIGINT
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - DEBUG=${DEBUG:-0}
+      - ADMINS=${ADMINS:-[]}
+      - BOT_TOKEN=${BOT_TOKEN}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_USERNAME=${REDIS_USERNAME:-}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - GOOGLE_TOKEN=${GOOGLE_TOKEN}
+
+  redis:
+    image: redis:alpine
+    restart: on-failure
+    volumes:
+      - redis-data:/data
+
+  postgres:
+    image: postgres:alpine
+    restart: on-failure
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+
+
+
+volumes:
+  redis-data:
+  postgres-data:
