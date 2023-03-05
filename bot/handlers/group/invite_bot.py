@@ -22,7 +22,9 @@ async def invite_bot(
     await sleep(1)
     if event.chat.id not in cache:
         await session.execute(
-            insert(Group).values(chat_id=event.chat.id, title=event.chat.title).on_conflict_do_update(
+            insert(Group)
+            .values(chat_id=event.chat.id, title=event.chat.title)
+            .on_conflict_do_update(
                 index_elements=[Group.chat_id], set_=dict(title=event.chat.title)
             )
         )
