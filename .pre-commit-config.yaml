@@ -13,8 +13,9 @@ repos:
       - id: "check-toml"
       - id: "check-json"
   - repo: https://github.com/pdm-project/pdm
-    rev: 2.4.6
+    rev: 2.4.7
     hooks:
       - id: pdm-export
         args: [ '-o', 'requirements.txt', '--without-hashes', '--prod' ]
         files: ^pdm.lock$
+      - id: pdm-lock-check
