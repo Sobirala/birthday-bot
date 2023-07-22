@@ -13,11 +13,8 @@ RUN pip install -r requirements.txt
 
 # run stage
 FROM python:${PYTHON}-slim
-# RUN apt-get update && apt-get install -y locales locales-all
+RUN apt-get update && apt-get install -y locales locales-all
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-COPY bot/ bot/
-COPY locales/ locales/
-COPY migrations/ migrations/
-COPY alembic.ini .
+COPY . .
 CMD ["python", "-m", "bot"]
