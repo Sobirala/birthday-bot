@@ -13,9 +13,8 @@ if TYPE_CHECKING:
 class Group(TimestampMixin, Base):
     __tablename__ = "groups"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     chat_id: Mapped[int] = mapped_column(BigInteger, index=True, unique=True)
-    title: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str]
     language: Mapped[Language] = mapped_column(default=Language.UA)
     collect: Mapped[bool] = mapped_column(default=False)
     users: Mapped[List["User"]] = relationship(

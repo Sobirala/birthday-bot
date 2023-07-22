@@ -1,5 +1,5 @@
 import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import BigInteger, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -14,15 +14,15 @@ if TYPE_CHECKING:
 class User(TimestampMixin, Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, index=True, unique=True)
-    username: Mapped[Optional[str]] = mapped_column(String(32))
-    fullname: Mapped[str] = mapped_column(String(129))
+    fullname: Mapped[str]
     gender: Mapped[Gender]
     language: Mapped[Language] = mapped_column(default=Language.UA)
-    address: Mapped[str] = mapped_column(String(256))
-    timezone: Mapped[str] = mapped_column(String(32))
+    timezone: Mapped[str]
     birthday: Mapped[datetime.date]
     groups: Mapped[List["Group"]] = relationship(
         secondary="usergrouplink", back_populates="users"
     )
+
+    def __repr__(self):
+        return f"<User id={self.id} name={self.fullname}>"
