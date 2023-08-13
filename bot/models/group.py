@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import BigInteger, String
+from sqlalchemy import BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.models.base import Base, TimestampMixin
-from bot.models.enums import Language
+from bot.types import Language
 
 if TYPE_CHECKING:
     from .user import User
