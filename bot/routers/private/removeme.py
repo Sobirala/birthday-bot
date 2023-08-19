@@ -20,7 +20,7 @@ async def select_remove(message: Message, uow: UnitOfWork, i18n: TranslatorRunne
 
     await message.answer(
         i18n.private.remove.me(),
-        reply_markup=await select_remove_group(user.groups, i18n),
+        reply_markup=select_remove_group(user.groups, i18n),
     )
 
 

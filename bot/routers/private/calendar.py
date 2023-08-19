@@ -21,7 +21,7 @@ async def select_calendar(message: Message, uow: UnitOfWork, i18n: TranslatorRun
     if user and user.groups:
         await message.answer(
             i18n.private.select.calendar(),
-            reply_markup=await select_calendar_group(user.groups),
+            reply_markup=select_calendar_group(user.groups),
         )
 
 

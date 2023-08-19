@@ -15,7 +15,7 @@ class SelectConfirm(CallbackData, prefix="confirm"):
     selected: ConfirmTypes
 
 
-async def confirm_keyboard(i18n: TranslatorRunner) -> InlineKeyboardMarkup:
+def confirm_keyboard(i18n: TranslatorRunner) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for i in ConfirmTypes:
         builder.button(

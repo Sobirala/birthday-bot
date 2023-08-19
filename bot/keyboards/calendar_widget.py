@@ -1,8 +1,7 @@
 import calendar
 from datetime import date
 
-from aiogram import Router
-from aiogram.filters import Text
+from aiogram import Router, F
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
@@ -38,15 +37,15 @@ class ChangeMonth(CallbackData, prefix="change_month"):
 
 class Calendar:
     @staticmethod
-    async def register_widget(router: Router):
+    def register_widget(router: Router):
         router.callback_query.register(Calendar.change_month, ChangeMonth.filter())
         router.callback_query.register(Calendar.select_month, SelectMonth.filter())
         router.callback_query.register(Calendar.change_year, ChangeYear.filter())
         router.callback_query.register(Calendar.select_year, SelectYear.filter())
-        router.callback_query.register(Calendar.reset, Text("reset_calendar"))
+        router.callback_query.register(Calendar.reset, F.data == "reset_calendar")
 
     @staticmethod
-    async def _years_keyboard(year: int) -> InlineKeyboardMarkup:
+    def _years_keyboard(year: int) -> InlineKeyboardMarkup:
         builder = InlineKeyboardBuilder()
         bottom_menu = []
         if year + 7 >= MAX_YEAR:
@@ -83,7 +82,7 @@ class Calendar:
         return builder.as_markup()
 
     @staticmethod
-    async def _months_keyboard(year: int, locale: str) -> InlineKeyboardMarkup:
+    def _months_keyboard(year: int, locale: str) -> InlineKeyboardMarkup:
         local = Locale.parse(locale)
 
         builder = InlineKeyboardBuilder()
@@ -136,7 +135,7 @@ class Calendar:
         return builder.as_markup()
 
     @staticmethod
-    async def _month_keyboard(
+    def _month_keyboard(
             year: int, month: int, locale: str
     ) -> InlineKeyboardMarkup:
         c = calendar.TextCalendar(calendar.MONDAY)
@@ -212,16 +211,16 @@ class Calendar:
         return builder.as_markup()
 
     @staticmethod
-    async def generate_keyboard(locale: str):
+    def generate_keyboard(locale: str):
         today = date.today()
-        return await Calendar._month_keyboard(today.year, today.month, locale)
+        return Calendar._month_keyboard(today.year, today.month, locale)
 
     @staticmethod
     async def change_month(
             callback: CallbackQuery, callback_data: ChangeMonth, locale: str
     ):
         await callback.message.edit_reply_markup(
-            reply_markup=await Calendar._months_keyboard(callback_data.year, locale)
+            reply_markup=Calendar._months_keyboard(callback_data.year, locale)
         )
 
     @staticmethod
@@ -229,7 +228,7 @@ class Calendar:
             callback: CallbackQuery, callback_data: SelectMonth, locale: str
     ):
         await callback.message.edit_reply_markup(
-            reply_markup=await Calendar._month_keyboard(
+            reply_markup=Calendar._month_keyboard(
                 callback_data.year, callback_data.month, locale
             )
         )
@@ -237,7 +236,7 @@ class Calendar:
     @staticmethod
     async def change_year(callback: CallbackQuery, callback_data: ChangeYear):
         await callback.message.edit_reply_markup(
-            reply_markup=await Calendar._years_keyboard(callback_data.year)
+            reply_markup=Calendar._years_keyboard(callback_data.year)
         )
 
     @staticmethod
@@ -245,7 +244,7 @@ class Calendar:
             callback: CallbackQuery, callback_data: SelectYear, i18n: TranslatorRunner
     ):
         await callback.message.edit_reply_markup(
-            reply_markup=await Calendar._months_keyboard(
+            reply_markup=Calendar._months_keyboard(
                 callback_data.year, list(i18n.translators)[0].locale
             )
         )
@@ -253,5 +252,5 @@ class Calendar:
     @staticmethod
     async def reset(callback: CallbackQuery, locale: str):
         await callback.message.edit_reply_markup(
-            reply_markup=await Calendar.generate_keyboard(locale)
+            reply_markup=Calendar.generate_keyboard(locale)
         )
