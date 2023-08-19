@@ -1,8 +1,8 @@
 from .base import Base
+from .congratulation import Congratulation
 from .group import Group
 from .user import User
 from .usergrouplink import UserGroupLink
-from .congratulation import Congratulation
 
 __all__ = [
     "Base",

@@ -1,6 +1,6 @@
 from aiogram import F, Router
 from aiogram.enums.chat_type import ChatType
-from aiogram.filters import Command, Text, CommandStart, StateFilter
+from aiogram.filters import Command, CommandStart, StateFilter
 
 from bot.keyboards.calendar_widget import SelectDate
 from bot.keyboards.confirm import SelectConfirm
@@ -40,7 +40,7 @@ router.message.register(remove_extra, StateFilter(Form))
 router.message.register(start_chat, CommandStart())
 
 router.message.register(confirm_reset_user, Command(commands=["reset"]))
-router.callback_query.register(reset_user, Text("reset_user"))
+router.callback_query.register(reset_user, F.data == "reset_user")
 
 router.message.register(select_calendar, Command(commands=["calendar"]))
 router.callback_query.register(
@@ -51,4 +51,4 @@ router.message.register(select_remove, Command(commands=["removeme"]))
 router.callback_query.register(
     remove_group, SelectGroup.filter(F.action == GroupActions.REMOVE)
 )
-router.callback_query.register(remove_all, Text("remove_all"))
+router.callback_query.register(remove_all, F.data == "remove_all")

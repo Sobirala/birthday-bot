@@ -26,9 +26,7 @@ async def confirm_reset_user(message: Message, i18n: TranslatorRunner):
     )
 
 
-async def reset_user(
-        callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner, locale: str
-):
+async def reset_user(callback: CallbackQuery, state: FSMContext, i18n: TranslatorRunner, locale: str):
     await state.set_state(Form.birthday)
     await callback.message.answer(
         i18n.private.form.birthday(),

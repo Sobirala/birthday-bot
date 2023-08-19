@@ -8,19 +8,18 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from babel.dates import format_datetime
 from fluentogram import TranslatorRunner
-from loguru import logger
-from sqlalchemy import select
-from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bot.keyboards.calendar_widget import Calendar, SelectDate
 from bot.keyboards.confirm import ConfirmTypes, SelectConfirm, confirm_keyboard
 from bot.keyboards.gender import SelectGender, gender_keyboard
 from bot.models import Group, User
-from bot.models.enums import Gender
+from bot.repositories.group import GroupFilter
+from bot.repositories.uow import UnitOfWork
+from bot.repositories.user import UserFilter
 from bot.services.google_maps import GoogleMaps
 from bot.states.form import Form
+from bot.types import Gender
 
 
 async def calculate_age(birthdate: date) -> int:
@@ -34,30 +33,16 @@ async def calculate_age(birthdate: date) -> int:
 async def start_form(
         message: Message,
         bot: Bot,
-        session: AsyncSession,
+        uow: UnitOfWork,
         i18n: TranslatorRunner,
         locale: str,
         command: CommandObject,
         state: FSMContext,
 ):
     await state.clear()
-    group = (
-        await session.scalars(
-            select(Group)
-            .filter(Group.chat_id == int(command.args))
-            .options(selectinload(Group.users))
-            .limit(1)
-        )
-    ).first()
+    group = await uow.groups.find_one(GroupFilter(chat_id=int(command.args)), options=[selectinload(Group.users)])
 
-    user = (
-        await session.scalars(
-            select(User)
-            .filter(User.user_id == message.chat.id)
-            .options(selectinload(User.groups))
-            .limit(1)
-        )
-    ).first()
+    user = await uow.users.find_one(UserFilter(user_id=message.chat.id), options=[selectinload(User.groups)])
 
     if not group:
         return await message.answer(i18n.error.group.notfound())
@@ -70,7 +55,6 @@ async def start_form(
         if member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.KICKED):
             return await message.answer(i18n.error.group.notfound())
     except TelegramBadRequest as err:
-        logger.error(err)
         return await message.answer(i18n.error.group.notfound())
 
     if user:
@@ -95,7 +79,7 @@ async def start_form(
     await message.answer(i18n.private.form.start(title=chat.title))
     await message.answer(
         i18n.private.form.birthday(),
-        reply_markup=await Calendar.generate_keyboard(locale),
+        reply_markup=Calendar.generate_keyboard(locale),
     )
 
 
@@ -108,12 +92,11 @@ async def input_birthday(
     birthday = date(callback_data.year, callback_data.month, callback_data.day)
     age = await calculate_age(birthday)
     if age < 0 or age > 120:
-        return callback.answer("Дохуя хочеш")
+        return callback.answer("Неправильна дата")
     await state.update_data(birthday=birthday.strftime("%d/%m/%Y"))
     await state.set_state(Form.gender)
-    await callback.message.edit_text(
-        i18n.private.form.gender(), reply_markup=await gender_keyboard(i18n)
-    )
+    await callback.message.edit_reply_markup()
+    await callback.message.answer(i18n.private.form.gender(), reply_markup=gender_keyboard(i18n))
 
 
 async def input_gender(
@@ -124,12 +107,13 @@ async def input_gender(
 ):
     data = await state.update_data(gender=callback_data.gender.value)
     await state.set_state(Form.confirm_birthday)
-    await callback.message.edit_text(
+    await callback.message.edit_reply_markup()
+    await callback.message.answer(
         i18n.private.form.confirm.birthday(
             birthday=datetime.strptime(data["birthday"], "%d/%m/%Y"),
             gender=callback_data.gender.value,
         ),
-        reply_markup=await confirm_keyboard(i18n),
+        reply_markup=confirm_keyboard(i18n),
     )
 
 
@@ -140,51 +124,43 @@ async def confirm_birthday(
         i18n: TranslatorRunner,
         locale: str,
 ):
+    await callback.message.edit_reply_markup()
     if callback_data.selected == ConfirmTypes.YES:
-        await state.update_data(message_id=callback.message.message_id)
         await state.set_state(Form.address)
-        await callback.message.edit_text(i18n.private.form.address())
+        await callback.message.answer(i18n.private.form.address())
     else:
         await state.set_state(Form.birthday)
-        await callback.message.edit_text(
+        await callback.message.answer(
             i18n.private.form.disallow.birthday(),
             reply_markup=await Calendar.generate_keyboard(locale),
         )
 
 
-async def input_address(message: Message, state: FSMContext, i18n: TranslatorRunner, bot: Bot, locale: str):
-    await message.delete()
-    api = GoogleMaps("")
-    data = await state.get_data()
-    address = await api.get_address(message.text, "uk-UA")
-    if address:
-        timezone = await api.get_timezone(address.latitude, address.longitude)
-        await state.update_data(address=address.address, timezone=timezone.zone)
-        await state.set_state(Form.confirm_address)
-        return await bot.edit_message_text(
-            i18n.private.form.confirm.address(
-                address=address.address,
-                now=format_datetime(
-                    datetime=datetime.utcnow(),
-                    format="dd MMMM, HH:mm",
-                    tzinfo=timezone,
-                    locale=locale
+async def input_address(message: Message, state: FSMContext, i18n: TranslatorRunner, locale: str):
+    async with GoogleMaps() as api:
+        address = await api.get_address(message.text, "uk-UA")
+        if address:
+            timezone = await api.get_timezone(address.latitude, address.longitude)
+            await state.update_data(timezone=timezone.zone)
+            await state.set_state(Form.confirm_address)
+            return await message.answer(
+                i18n.private.form.confirm.address(
+                    address=address.address,
+                    now=format_datetime(
+                        datetime=datetime.utcnow(),
+                        format="dd MMMM, HH:mm",
+                        tzinfo=timezone,
+                        locale=locale
+                    ),
                 ),
-            ),
-            chat_id=message.chat.id,
-            message_id=data.get("message_id"),
-            reply_markup=await confirm_keyboard(i18n),
-        )
-    return await bot.edit_message_text(
-        i18n.error.address.notfound(),
-        chat_id=message.chat.id,
-        message_id=data.get("message_id"),
-    )
+                reply_markup=confirm_keyboard(i18n),
+            )
+    return await message.answer(i18n.error.address.notfound())
 
 
 async def confirm_address(
         callback: CallbackQuery,
-        session: AsyncSession,
+        uow: UnitOfWork,
         state: FSMContext,
         callback_data: SelectConfirm,
         i18n: TranslatorRunner,
@@ -192,41 +168,19 @@ async def confirm_address(
 ):
     if callback_data.selected == ConfirmTypes.YES:
         data = await state.get_data()
-        user = (
-            await session.scalars(
-                insert(User)
-                .values(
-                    user_id=callback.from_user.id,
-                    username=callback.from_user.username,
-                    fullname=callback.from_user.full_name,
-                    gender=Gender(data["gender"]),
-                    address=data["address"],
-                    timezone=data["timezone"],
-                    birthday=datetime.strptime(data["birthday"], "%d/%m/%Y"),
-                )
-                .on_conflict_do_update(
-                    index_elements=[User.user_id],
-                    set_=dict(
-                        username=callback.from_user.username,
-                        fullname=callback.from_user.full_name,
-                        gender=Gender(data["gender"]),
-                        address=data["address"],
-                        timezone=data["timezone"],
-                        birthday=datetime.strptime(data["birthday"], "%d/%m/%Y"),
-                    ),
-                )
-                .returning(User)
-            )
-        ).first()
+        info = dict(
+            fullname=callback.from_user.full_name,
+            gender=Gender(data["gender"]),
+            timezone=data["timezone"],
+            birthday=datetime.strptime(data["birthday"], "%d/%m/%Y"),
+        )
+        if await uow.users.check_exists(UserFilter(user_id=callback.from_user.id)):
+            user = await uow.users.update(UserFilter(user_id=callback.from_user.id), **info)
+        else:
+            user = User(user_id=callback.from_user.id, **info)
+            await uow.users.create(user)
         if "chat_id" in data:
-            group = (
-                await session.scalars(
-                    select(Group)
-                    .filter(Group.chat_id == data["chat_id"])
-                    .options(selectinload(Group.users))
-                    .limit(1)
-                )
-            ).first()
+            group = await uow.groups.find_one(GroupFilter(chat_id=data["chat_id"]), options=[selectinload(Group.users)])
             group.users.append(user)
             try:
                 chat = await bot.get_chat(chat_id=data["chat_id"])
@@ -243,7 +197,6 @@ async def confirm_address(
                     i18n.private.form.confirm(title=chat.title, is_admin=is_admin)
                 )
             except TelegramBadRequest as err:
-                logger.error(err)
                 return await callback.message.answer(i18n.error.group.notfound())
         else:
             await callback.message.edit_text("Ваші дані оновлено")
