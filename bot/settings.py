@@ -1,10 +1,11 @@
 from typing import List, Optional
 
-from pydantic import BaseSettings, Field, SecretStr
+from pydantic import SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    TOKEN: SecretStr = Field(..., env="BOT_TOKEN")
+    TOKEN: SecretStr
     ADMINS: List[int] = []
     LOGLEVEL: Optional[str] = "DEBUG"
     POSTGRES_HOST: str
@@ -19,6 +20,10 @@ class Settings(BaseSettings):
     REDIS_DB: int
     GOOGLE_TOKEN: SecretStr
 
-    class Config:
-        env_file = ".env", "stack.env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=('stack.env', '.env'),
+        extra="ignore"
+    )
+
+
+settings = Settings()
