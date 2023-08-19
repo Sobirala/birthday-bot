@@ -4,6 +4,8 @@ from aiogram import BaseMiddleware
 from aiogram.types import Update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from bot.repositories.uow import UnitOfWork
+
 
 class SessionMaker(BaseMiddleware):
     def __init__(self, sessionmaker: async_sessionmaker[AsyncSession]):
@@ -17,5 +19,6 @@ class SessionMaker(BaseMiddleware):
     ) -> Any:
         async with self._async_sessionmaker() as session:
             async with session.begin():
-                data["session"] = session
-                return await handler(event, data)
+                async with UnitOfWork(session) as uow:
+                    data["uow"] = uow
+                    return await handler(event, data)
