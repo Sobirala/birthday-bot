@@ -1,14 +1,10 @@
-from typing import Optional, Sequence
-
-from pydantic import BaseModel
-from sqlalchemy import select, ColumnElement
-from sqlalchemy.sql.base import ExecutableOption
+from typing import Optional
 
 from bot.models import Group
-from bot.repositories.base import BaseRepository
+from bot.repositories.base import BaseRepository, BaseFilter
 
 
-class GroupFilter(BaseModel):
+class GroupFilter(BaseFilter):
     chat_id: Optional[int] = None
     title: Optional[str] = None
     collect: Optional[bool] = None

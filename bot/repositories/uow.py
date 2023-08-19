@@ -2,6 +2,7 @@ from typing import Self
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.models import Base
 from bot.repositories.congratulation import CongratulationRepository
 from bot.repositories.group import GroupRepository
 from bot.repositories.user import UserRepository
@@ -28,6 +29,9 @@ class UnitOfWork:
 
     async def commit(self):
         await self._session.commit()
+
+    async def delete(self, model: Base):
+        await self.delete(model)
 
     async def rollback(self):
         await self._session.rollback()

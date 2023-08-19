@@ -1,13 +1,12 @@
 from typing import Optional
 
-from pydantic import BaseModel
 from sqlalchemy import select, func
 
 from bot.models import Congratulation
-from bot.repositories.base import BaseRepository
+from bot.repositories.base import BaseRepository, BaseFilter
 
 
-class CongratulationFilter(BaseModel):
+class CongratulationFilter(BaseFilter):
     photo_file_id: Optional[str] = None
     message: Optional[str] = None
 
