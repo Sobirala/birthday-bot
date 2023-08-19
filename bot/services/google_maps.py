@@ -1,25 +1,32 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Self
 
 from geopy import GoogleV3, Location, Point
 from geopy.adapters import AioHTTPAdapter
 from pytz.tzinfo import BaseTzInfo
 
 from bot.services.singleton import SingletonMeta
+from bot.settings import settings
 
 
 class GoogleMaps(metaclass=SingletonMeta):
-    adapter: GoogleV3
+    client: GoogleV3
 
-    def __init__(self, api_key: str):
-        self.adapter = GoogleV3(
-            api_key=api_key,
+    def __init__(self):
+        self.client = GoogleV3(
+            api_key=settings.GOOGLE_TOKEN.get_secret_value(),
             user_agent="birthday_bot",
             adapter_factory=AioHTTPAdapter,
             timeout=1000,
         )
 
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.__aexit__(exc_type, exc_val, exc_tb)
+
     async def get_address(self, city: str, language: str) -> Location:
-        address = await self.adapter.geocode(city, exactly_one=True, language=language)
+        address = await self.client.geocode(city, exactly_one=True, language=language)
         return address
 
     @staticmethod
@@ -31,7 +38,7 @@ class GoogleMaps(metaclass=SingletonMeta):
 
     async def get_timezone(self, latitude: float, longitude: float) -> BaseTzInfo:
         timezone = (
-            await self.adapter.reverse_timezone(
+            await self.client.reverse_timezone(
                 Point(latitude=latitude, longitude=longitude)
             )
         ).pytz_timezone
