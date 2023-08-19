@@ -1,40 +1,25 @@
-[tool.pdm]
-[tool.pdm.dev-dependencies]
-test = [
-    "pytest>=7.2.0",
-    "pytest-asyncio>=0.20.3",
-]
-dev = [
-    "pre-commit>=3.1.1",
-]
-lint = [
-    "flake8>=6.0.0",
-]
-
-[project]
-name = ""
-version = "2.0b1"
+[tool.poetry]
+name = "birthday-bot"
+version = "0.1.0"
 description = ""
-authors = [
-    { name = "Kulunchick", email = "nikolikrasovski@gmail.com" },
-]
-dependencies = [
-    "aiogram>=3.0.0b8",
-    "redis>=4.3.4",
-    "APScheduler>=3.9.1.post1",
-    "geopy>=2.3.0",
-    "Babel>=2.11.0",
-    "pydantic>=2.0.3",
-    "python-dotenv>=0.21.0",
-    "pytz>=2022.6",
-    "alembic>=1.9.2",
-    "asyncpg>=0.27.0",
-    "sqlalchemy>=2.0.1",
-    "jinja2>=3.1.2",
-    "cachetools>=5.3.0",
-    "fluentogram>=1.1.6",
-    "pydantic-settings>=2.0.2",
-    "structlog>=23.1.0",
-]
-requires-python = ">=3.10"
-license = { text = "AGPL-3.0" }
+authors = ["Kulunchick <nikolikrasovski@gmail.com>"]
+readme = "README.md"
+packages = [{include = "birthday_bot"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aiogram = {version = "^3.0.0b8", allow-prereleases = true}
+sqlalchemy = {extras = ["postgresql-asyncpg"], version = "^2.0.19"}
+uvloop = {version = "^0.17.0", platform = "linux"}
+structlog = "^23.1.0"
+fluentogram = "^1.1.6"
+apscheduler = "^3.10.1"
+geopy = "^2.3.0"
+redis = "^4.6.0"
+pydantic-settings = "^2.0.2"
+cachetools = "^5.3.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
