@@ -2,10 +2,10 @@ from aiogram import Bot
 from aiogram.types import Message
 from fluentogram import TranslatorRunner
 
+from bot.keyboards.register import register_keyboard
 from bot.models import Group
 from bot.repositories.group import GroupFilter
 from bot.repositories.uow import UnitOfWork
-from bot.utils.links import generate_link_button
 
 
 async def start_group(message: Message, uow: UnitOfWork, bot: Bot, i18n: TranslatorRunner):
@@ -15,5 +15,5 @@ async def start_group(message: Message, uow: UnitOfWork, bot: Bot, i18n: Transla
 
     await message.answer(
         i18n.group.start(),
-        reply_markup=await generate_link_button(bot, message.chat.id),
+        reply_markup=await register_keyboard(bot, message.chat.id),
     )

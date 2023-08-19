@@ -7,11 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from fluentogram import TranslatorRunner
 
 from bot.models import Group
-
-
-class GroupActions(Enum):
-    CALENDAR = "calendar"
-    REMOVE = "remove"
+from bot.types.group_actions import GroupActions
 
 
 class SelectGroup(CallbackData, prefix="group"):
