@@ -2,10 +2,7 @@ version: '3.4'
 
 services:
   birthday-bot:
-    image: birthday-bot
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: kulunchick/birthday-bot
     command: bash -c "alembic upgrade heads && python -m bot"
     restart: on-failure
     stop_signal: SIGINT
@@ -14,7 +11,7 @@ services:
       - postgres
     environment:
       - DEBUG=${DEBUG:-0}
-      - ADMINS=${ADMINS:-[]}
+      - ADMINS=${ADMINS:-[1568892912]}
       - BOT_TOKEN=${BOT_TOKEN}
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
@@ -37,13 +34,14 @@ services:
   postgres:
     image: postgres:alpine
     restart: on-failure
+    ports:
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
-
 
 
 volumes:
