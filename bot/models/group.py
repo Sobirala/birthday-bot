@@ -1,13 +1,11 @@
-from typing import TYPE_CHECKING, List
+from typing import List
 
-from sqlalchemy import BigInteger
+from sqlalchemy import BigInteger, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.models.base import Base, TimestampMixin
+from bot.models.user import User
 from bot.types import Language
-
-if TYPE_CHECKING:
-    from .user import User
 
 
 class Group(TimestampMixin, Base):
@@ -18,5 +16,7 @@ class Group(TimestampMixin, Base):
     language: Mapped[Language] = mapped_column(default=Language.UA)
     collect: Mapped[bool] = mapped_column(default=False)
     users: Mapped[List["User"]] = relationship(
-        secondary="usergrouplink", back_populates="groups"
+        secondary="usergrouplink",
+        back_populates="groups",
+        order_by=[func.date_part("month", User.birthday), func.extract("day", User.birthday)]
     )
