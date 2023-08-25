@@ -54,7 +54,7 @@ async def start_form(
         )
         if member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.KICKED):
             return await message.answer(i18n.error.group.notfound())
-    except TelegramBadRequest as err:
+    except TelegramBadRequest:
         return await message.answer(i18n.error.group.notfound())
 
     if user:
@@ -196,7 +196,7 @@ async def confirm_address(
                 await callback.message.edit_text(
                     i18n.private.form.confirm(title=chat.title, is_admin=is_admin)
                 )
-            except TelegramBadRequest as err:
+            except TelegramBadRequest:
                 return await callback.message.answer(i18n.error.group.notfound())
         else:
             await callback.message.edit_text("Ваші дані оновлено")

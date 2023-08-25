@@ -27,3 +27,8 @@ profile:
 
 #Specify Qodana linter for analysis (Applied in CI/CD pipeline)
 linter: jetbrains/qodana-python:latest
+include:
+  - name: CheckDependencyLicenses
+exclude:
+  - name: PyInterpreterInspection
+  - name: PyUnresolvedReferencesInspection

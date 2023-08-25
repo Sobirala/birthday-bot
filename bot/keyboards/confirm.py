@@ -1,5 +1,3 @@
-from enum import Enum
-
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -15,8 +13,6 @@ class SelectConfirm(CallbackData, prefix="confirm"):
 def confirm_keyboard(i18n: TranslatorRunner) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for i in ConfirmTypes:
-        builder.button(
-            text=i18n.confirm(confirm=i), callback_data=SelectConfirm(selected=i)
-        )
+        builder.button(text=i18n.confirm(confirm=i), callback_data=SelectConfirm(selected=i))
     builder.adjust(2)
     return builder.as_markup()

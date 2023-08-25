@@ -12,9 +12,6 @@ class SelectGender(CallbackData, prefix="gender"):
 def gender_keyboard(i18n: TranslatorRunner) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for gender in Gender:
-        builder.button(
-            text=i18n.gender.names(gender=gender),
-            callback_data=SelectGender(gender=gender),
-        )
+        builder.button(text=i18n.gender.names(gender=gender), callback_data=SelectGender(gender=gender))
     builder.adjust(2)
     return builder.as_markup()

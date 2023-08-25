@@ -33,7 +33,11 @@ async def remove_group(
 ):
     try:
         chat = await bot.get_chat(chat_id=callback_data.chat_id)
-        sender = await uow.users.get_user_in_group(callback.from_user.id, callback_data.chat_id, [selectinload(User.groups)])
+        sender = await uow.users.get_user_in_group(
+            callback.from_user.id,
+            callback_data.chat_id,
+            [selectinload(User.groups)]
+        )
         if not sender:
             return await callback.message.edit_text(i18n.error.user.notin.group())
 

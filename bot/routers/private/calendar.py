@@ -10,7 +10,7 @@ from fluentogram import TranslatorRunner
 from sqlalchemy.orm import selectinload
 
 from bot.keyboards.groups import SelectGroup, select_calendar_group
-from bot.models import User
+from bot.models import User, Group
 from bot.repositories.group import GroupFilter
 from bot.repositories.uow import UnitOfWork
 from bot.repositories.user import UserFilter
@@ -40,7 +40,7 @@ async def print_calendar(
         if not sender:
             return await callback.message.answer(i18n.error.user.notin.group())
 
-        group = await uow.groups.find_one(GroupFilter(chat_id=callback_data.chat_id))
+        group = await uow.groups.find_one(GroupFilter(chat_id=callback_data.chat_id), options=[selectinload(Group.users)])
         if len(group.users) == 1:
             return await callback.message.answer(i18n.warning.only.sender.ingroup())
 

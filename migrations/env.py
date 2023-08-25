@@ -6,7 +6,7 @@ from sqlalchemy import URL, engine_from_config, pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from bot.config import Settings
+from bot.settings import settings
 from bot.models import Base
 
 # this is the Alembic Config object, which provides
@@ -28,7 +28,6 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-settings = Settings()
 config.set_main_option(
     "sqlalchemy.url",
     URL.create(
