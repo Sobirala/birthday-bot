@@ -1,27 +1,21 @@
-ARG PYTHON_VERSION=3.11
+ARG PYTHON=3.11
 # build stage
-FROM python:${PYTHON_VERSION}-slim AS builder
+FROM python:${PYTHON}-slim AS builder
 
-# install PDM
-RUN pip install -U pip setuptools wheel
-RUN pip install pdm
+ENV PATH /opt/venv/bin:$PATH
+WORKDIR /opt
+RUN python -m venv venv
+RUN pip install poetry
 
-# copy files
-COPY pyproject.toml pdm.lock /bot/
-
-# install dependencies and project into the local packages directory
-WORKDIR /bot
-RUN mkdir __pypackages__ && pdm install --prod --no-lock --no-editable
-
+COPY pyproject.toml poetry.lock ./
+RUN poetry config virtualenvs.create false
+RUN poetry install --no-interaction --no-root --only main
 
 # run stage
-FROM python:${PYTHON_VERSION}-slim
-ARG PYTHON_VERSION
+FROM python:${PYTHON}-slim
+RUN apt-get update && apt-get install -y locales locales-all
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+COPY . .
 
-# retrieve packages from build stage
-COPY bot/ /bot/
-ENV PYTHONPATH=/bot/pkgs
-COPY --from=builder /bot/__pypackages__/${PYTHON_VERSION}/lib /bot/pkgs
-
-# set command/entrypoint, adapt to fit your needs
 CMD ["python", "-m", "bot"]

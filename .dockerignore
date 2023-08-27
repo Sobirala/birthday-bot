@@ -198,3 +198,11 @@ tags
 **/Module.symvers
 **/Mkfile.old
 **/dkms.conf
+
+.env.dist
+.flake8
+.gitignore
+.pre-commit-config.yaml
+docker-compose.yml
+LICENSE
+README.md

@@ -1,47 +1,64 @@
 import asyncio
 
 from aiogram import Bot, Dispatcher
+from aiogram.enums.parse_mode import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
-from motor.motor_asyncio import AsyncIOMotorClient
 from redis import asyncio as aioredis
+from sqlalchemy import URL
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from bot.config import Settings
-from bot.handlers import inGroup, inPrivate, exceptions
-from bot.middlewares.globalVariables import GlobalVariables
-from bot.scheduler import Scheduler
-from bot.utils import logs
+from bot.commands import set_bot_commands
+from bot.settings import settings
+from bot.keyboards.calendar_widget import Calendar
+from bot.middlewares.database import SessionMaker
+from bot.middlewares.i18n import TranslatorRunnerMiddleware
+from bot.routers import router
+from bot.services.scheduler import Scheduler
+from bot.translator.hub import Translator
+from bot.utils.logger import setup_logger
 
 
 async def main():
-    config = Settings()
+    setup_logger()
+    engine = create_async_engine(
+        URL.create(
+            "postgresql+asyncpg",
+            username=settings.POSTGRES_USER,
+            password=settings.POSTGRES_PASSWORD.get_secret_value(),
+            host=settings.POSTGRES_HOST,
+            port=settings.POSTGRES_PORT,
+            database=settings.POSTGRES_DB,
+        )
+    )
+    async_session = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
 
-    logs.setup(level=config.LOGLEVEL)
-
-    storage = RedisStorage(aioredis.Redis(
-        host=config.REDIS_HOST,
-        port=config.REDIS_PORT,
-        username=config.REDIS_USERNAME,
-        password=config.REDIS_PASSWORD.get_secret_value(),
-        db=config.REDIS_DB,
+    redis = aioredis.Redis(
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        username=settings.REDIS_USERNAME,
+        password=settings.REDIS_PASSWORD.get_secret_value(),
         decode_responses=True
-    ))
-    bot = Bot(token=config.TOKEN.get_secret_value(), parse_mode="HTML")
-    dp = Dispatcher(storage=storage)
-    client = AsyncIOMotorClient(config.MONGO_URL.get_secret_value())
-    db = client.birthdays
+    )
 
-    scheduler = Scheduler(bot, db)
+    storage = RedisStorage(redis=redis)
+    bot = Bot(token=settings.TOKEN.get_secret_value(), parse_mode=ParseMode.HTML)
+    dp = Dispatcher(storage=storage)
+
+    scheduler = Scheduler(bot, async_session)
     await scheduler.start()
 
-    dp.message.middleware(GlobalVariables(db, config))
-    dp.callback_query.middleware(GlobalVariables(db, config))
+    Calendar.register_widget(dp)
+    translator = Translator()
 
-    dp.include_router(inPrivate.router)
-    dp.include_router(inGroup.router)
-    dp.include_router(exceptions.router)
+    dp.update.middleware(SessionMaker(sessionmaker=async_session))
+    dp.update.middleware(TranslatorRunnerMiddleware(translator=translator))
+
+    dp.include_router(router)
+
+    await dp.start_polling(bot)
 
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
