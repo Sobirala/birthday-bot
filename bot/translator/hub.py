@@ -1,32 +1,34 @@
 from fluent_compiler.bundle import FluentBundle
 from fluentogram import FluentTranslator, TranslatorHub, TranslatorRunner
 
+from bot.enums import Language
+
 
 class Translator:
-    def __init__(self):
+    def __init__(self) -> None:
         self.t_hub = TranslatorHub(
             {
-                "uk_UA": (
-                    "uk_UA",
-                    "en_US",
+                Language.UA: (
+                    Language.UA,
+                    Language.EN,
                 ),
-                "en_US": ("en_US",),
+                Language.EN: (Language.EN,),
             },
             [
                 FluentTranslator(
-                    locale="uk_UA",
+                    locale=Language.UA,
                     translator=FluentBundle.from_files(
-                        "uk_UA", filenames=["locales/ua.ftl"], use_isolating=False
+                        Language.UA, filenames=["locales/ua.ftl"], use_isolating=False
                     ),
                 ),
                 FluentTranslator(
-                    locale="en_US",
+                    locale=Language.EN,
                     translator=FluentBundle.from_files(
-                        "en_US", filenames=["locales/en.ftl"], use_isolating=False
+                        Language.EN, filenames=["locales/en.ftl"], use_isolating=False
                     ),
                 ),
             ],
-            root_locale="uk_UA",
+            root_locale=Language.UA,
         )
 
     def __call__(self, language: str) -> TranslatorRunner:

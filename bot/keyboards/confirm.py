@@ -3,7 +3,7 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from fluentogram import TranslatorRunner
 
-from bot.types.confirm_types import ConfirmTypes
+from bot.enums.confirm_types import ConfirmTypes
 
 
 class SelectConfirm(CallbackData, prefix="confirm"):

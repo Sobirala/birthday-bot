@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 
 from bot.models import Congratulation
 from bot.repositories.base import BaseRepository, BaseFilter
-from bot.types import Language
+from bot.enums import Language
 
 
 class CongratulationFilter(BaseFilter):
@@ -19,6 +19,6 @@ class CongratulationRepository(BaseRepository[Congratulation, CongratulationFilt
     async def random(self, model_filter: CongratulationFilter) -> Optional[Congratulation]:
         query = select(self.__model__).order_by(func.random())
 
-        query = self._set_filter(query, 1)
+        query = self._set_filter(query, model_filter, 1)
 
         return (await self._session.scalars(query)).first()

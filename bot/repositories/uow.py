@@ -21,6 +21,7 @@ class UnitOfWork:
     async def __aenter__(self) -> Self:
         self.users = UserRepository(self._session)
         self.groups = GroupRepository(self._session)
+        self.congratulations = CongratulationRepository(self._session)
 
         return self
 

@@ -31,7 +31,7 @@ router.my_chat_member.register(kick_bot, ChatMemberUpdatedFilter(LEAVE_TRANSITIO
 router.message.register(kick_member, F.content_type == ContentType.LEFT_CHAT_MEMBER)
 
 router.message.register(start_group, CommandStart())
-router.message.register(collect, Command(commands=["collect"]), IsChatAdmin())
+router.message.register(collect, Command("collect"), IsChatAdmin())
 router.message.register(commands, Command(commands=["calendar", "removeme", "help", "reset"]))
 
 router.message.register(rename_group, F.new_chat_title)

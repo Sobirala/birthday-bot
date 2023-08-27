@@ -4,11 +4,10 @@ from geopy import GoogleV3, Location, Point
 from geopy.adapters import AioHTTPAdapter
 from pytz.tzinfo import BaseTzInfo
 
-from bot.services.singleton import SingletonMeta
 from bot.settings import settings
 
 
-class GoogleMaps(metaclass=SingletonMeta):
+class GoogleMaps:
     client: GoogleV3
 
     def __init__(self):

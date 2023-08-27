@@ -2,12 +2,10 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message
 from fluentogram import TranslatorRunner
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from bot.keyboards.groups import SelectGroup, select_remove_group
-from bot.models import Group, User
+from bot.models import User
 from bot.repositories.group import GroupFilter
 from bot.repositories.uow import UnitOfWork
 from bot.repositories.user import UserFilter

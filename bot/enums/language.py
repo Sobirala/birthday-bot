@@ -2,5 +2,5 @@ from enum import Enum
 
 
 class Language(str, Enum):
-    EN = "en-US"
-    UA = "uk-UA"
+    EN = "en_US"
+    UA = "uk_UA"

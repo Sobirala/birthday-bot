@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.models.base import Base, TimestampMixin
 from bot.models.user import User
-from bot.types import Language
+from bot.enums import Language
 
 
 class Group(TimestampMixin, Base):

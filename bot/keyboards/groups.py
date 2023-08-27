@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import List
 
 from aiogram.filters.callback_data import CallbackData
@@ -7,7 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from fluentogram import TranslatorRunner
 
 from bot.models import Group
-from bot.types.group_actions import GroupActions
+from bot.enums.group_actions import GroupActions
 
 
 class SelectGroup(CallbackData, prefix="group"):

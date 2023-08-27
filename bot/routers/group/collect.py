@@ -1,9 +1,6 @@
 from aiogram.types import Message
 from fluentogram import TranslatorRunner
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.models import Group
 from bot.repositories.group import GroupFilter
 from bot.repositories.uow import UnitOfWork
 

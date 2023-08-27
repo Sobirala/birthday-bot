@@ -1,7 +1,7 @@
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from bot.types import Gender
+from bot.enums import Gender
 from fluentogram import TranslatorRunner
 
 

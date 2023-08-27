@@ -11,7 +11,7 @@ from fluentogram import TranslatorRunner
 from sqlalchemy.orm import selectinload
 
 from bot.keyboards.calendar_widget import Calendar, SelectDate
-from bot.keyboards.confirm import ConfirmTypes, SelectConfirm, confirm_keyboard
+from bot.keyboards.confirm import SelectConfirm, confirm_keyboard
 from bot.keyboards.gender import SelectGender, gender_keyboard
 from bot.models import Group, User
 from bot.repositories.group import GroupFilter
@@ -19,7 +19,7 @@ from bot.repositories.uow import UnitOfWork
 from bot.repositories.user import UserFilter
 from bot.services.google_maps import GoogleMaps
 from bot.states.form import Form
-from bot.types import Gender
+from bot.enums import Gender, ConfirmTypes
 
 
 async def calculate_age(birthdate: date) -> int:

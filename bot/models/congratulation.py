@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.models.base import Base, TimestampMixin
-from bot.types import Language
+from bot.enums import Language
 
 
 class Congratulation(TimestampMixin, Base):

@@ -1,7 +1,5 @@
 from aiogram.types import ChatMemberUpdated
-from sqlalchemy import select
 
-from bot.models import Group
 from bot.repositories.group import GroupFilter
 from bot.repositories.uow import UnitOfWork
 

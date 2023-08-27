@@ -4,6 +4,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import Update
 
 from bot.translator.hub import Translator
+from bot.enums import Language
 
 
 class TranslatorRunnerMiddleware(BaseMiddleware):
@@ -16,6 +17,6 @@ class TranslatorRunnerMiddleware(BaseMiddleware):
             event: Update,
             data: Dict[str, Any],
     ) -> Any:
-        data["locale"] = "uk_UA"
-        data["i18n"] = self.translator("uk_UA")
+        data["locale"] = Language.UA
+        data["i18n"] = self.translator(Language.UA)
         return await handler(event, data)

@@ -5,7 +5,7 @@ from sqlalchemy import BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.models.base import Base, TimestampMixin
-from bot.types import Gender, Language
+from bot.enums import Gender, Language
 
 if TYPE_CHECKING:
     from bot.models.group import Group

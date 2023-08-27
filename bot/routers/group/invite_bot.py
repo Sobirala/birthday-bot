@@ -11,7 +11,7 @@ from bot.models import Group
 from bot.repositories.group import GroupFilter
 from bot.repositories.uow import UnitOfWork
 
-cache = TTLCache(maxsize=inf, ttl=10.0)
+cache = TTLCache[int, bool](maxsize=inf, ttl=10.0)
 
 
 async def invite_bot(event: ChatMemberUpdated, uow: UnitOfWork, bot: Bot, i18n: TranslatorRunner):

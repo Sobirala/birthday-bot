@@ -2,14 +2,13 @@ import datetime
 from typing import Optional, Sequence
 
 from sqlalchemy import select, and_, ColumnElement, func, Interval
-from sqlalchemy.dialects.oracle import INTERVAL
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.base import ExecutableOption
 from sqlalchemy.sql.functions import concat
 
 from bot.models import User, Group
 from bot.repositories.base import BaseRepository, BaseFilter
-from bot.types import Gender
+from bot.enums import Gender
 
 
 class UserFilter(BaseFilter):

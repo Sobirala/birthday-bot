@@ -6,18 +6,22 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     TOKEN: SecretStr
-    ADMINS: List[int] = []
+    ADMINS: List[int] = [1568892912]
     LOGLEVEL: Optional[str] = "DEBUG"
+    DONATE_LINK: str = "https://www.buymeacoffee.com/kulunchick"
+
     POSTGRES_HOST: str
     POSTGRES_PORT: int
     POSTGRES_USER: str
     POSTGRES_PASSWORD: SecretStr
     POSTGRES_DB: str
+
     REDIS_HOST: str
     REDIS_PORT: int
     REDIS_USERNAME: str
     REDIS_PASSWORD: SecretStr
     REDIS_DB: int
+
     GOOGLE_TOKEN: SecretStr
 
     model_config = SettingsConfigDict(
