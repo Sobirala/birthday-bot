@@ -2,10 +2,7 @@ version: '3.4'
 
 services:
   birthday-bot:
-    image: birthday-bot
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: kulunchick/birthday-bot:dev
     command: bash -c "alembic upgrade heads && python -m bot"
     restart: on-failure
     stop_signal: SIGINT

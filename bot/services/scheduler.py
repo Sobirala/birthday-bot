@@ -1,3 +1,5 @@
+import asyncio
+
 from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel import Locale
@@ -20,20 +22,36 @@ class Scheduler:
         self._logger = structlog.get_logger()
 
     async def start(self):
+        self._scheduler.start()
+
+    async def congratulations(self):
         async with self._async_sessionmaker() as session:
             async with session.begin():
                 async with UnitOfWork(session) as uow:
-                    await self.today(uow)
-                    await self.tomorrow(uow)
-                    await self.next_5_day(uow)
-                    self._scheduler.start()
+                    today = asyncio.create_task(self.today(uow), name="Today function")
+                    tomorrow = asyncio.create_task(self.tomorrow(uow), name="Tomorrow function")
+                    next_5_day = asyncio.create_task(self.next_5_day(uow), name="Next 5 day function")
+                    try:
+                        done, pending = await asyncio.wait(
+                            [today, tomorrow, next_5_day],
+                            return_when=asyncio.ALL_COMPLETED
+                        )
+                        for task in done:
+                            name = task.get_name()
+                            await self._logger.adebug(f"DONE: {name}")
+                            exception = task.exception()
+                            if isinstance(exception, Exception):
+                                await self._logger.error(f"{name} threw {exception}")
+                        for task in pending:
+                            task.cancel()
+                    except:
+                        await self._logger.aerror("Scheduler not done")
 
     async def today(self, uow: UnitOfWork):
         today = await uow.users.get_birthday_persons()
         for birthday in today:
             for group in birthday.groups:
                 congratulation = await uow.congratulations.random(CongratulationFilter(language=group.language))
-                print(congratulation.message)
                 username = f'<a href="tg://user?id={birthday.user_id}">{birthday.fullname}</a>'
                 await self._bot.send_document(
                     group.chat_id,
