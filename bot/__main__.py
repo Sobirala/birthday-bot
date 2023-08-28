@@ -21,8 +21,10 @@ from bot.utils.logger import setup_logger
 
 
 async def on_startup(bot: Bot):
+    await bot.delete_webhook()
     await set_bot_commands(bot)
-    await bot.set_webhook(f"{settings.BASE_WEBHOOK_URL}{settings.WEBHOOK_PATH}", secret_token=settings.WEBHOOK_SECRET)
+    if settings.USE_WEBHOOK:
+        await bot.set_webhook(f"{settings.BASE_WEBHOOK_URL}{settings.WEBHOOK_PATH}", secret_token=settings.WEBHOOK_SECRET)
 
 
 def main():
