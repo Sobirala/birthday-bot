@@ -160,52 +160,28 @@ class Calendar:
 
         builder.adjust(1, 7)
 
-        bottom_menu = []
-        if year == MIN_YEAR and month - 1 == 0:
-            bottom_menu.extend(
-                (
-                    InlineKeyboardButton(
-                        text="↩️", callback_data=ChangeMonth(year=year).pack()
-                    ),
-                    InlineKeyboardButton(
-                        text="▶️",
-                        callback_data=SelectMonth(month=month + 1, year=year).pack(),
-                    ),
-                )
-            )
-        elif year == MAX_YEAR and month + 1 == 13:
-            bottom_menu.extend(
-                (
-                    InlineKeyboardButton(
-                        text="◀️",
-                        callback_data=SelectMonth(month=month - 1, year=year).pack(),
-                    ),
-                    InlineKeyboardButton(
-                        text="↩️", callback_data=ChangeMonth(year=year).pack()
-                    ),
-                )
-            )
+        bottom_menu = InlineKeyboardBuilder()
+        next_data = (
+            SelectMonth(month=1, year=year + 1)
+            if month + 1 == 13
+            else SelectMonth(month=month + 1, year=year)
+        )
+        prev_data = (
+            SelectMonth(month=12, year=year - 1)
+            if month - 1 == 0
+            else SelectMonth(month=month - 1, year=year)
+        )
+        if year == MAX_YEAR and month + 1 == 13:
+            bottom_menu.button(text="◀️", callback_data=SelectMonth(month=month-1, year=year))
+            bottom_menu.button(text="↩️", callback_data=ChangeMonth(year=year))
+        elif year == MIN_YEAR and month - 1 == 0:
+            bottom_menu.button(text="↩️", callback_data=ChangeMonth(year=year))
+            bottom_menu.button(text="▶️", callback_data=SelectMonth(month=month+1, year=year))
         else:
-            next_data = (
-                SelectMonth(month=1, year=year + 1)
-                if month + 1 == 13
-                else SelectMonth(month=month + 1, year=year)
-            )
-            prev_data = (
-                SelectMonth(month=12, year=year - 1)
-                if month - 1 == 0
-                else SelectMonth(month=month - 1, year=year)
-            )
-            bottom_menu.extend(
-                (
-                    InlineKeyboardButton(text="◀️", callback_data=prev_data.pack()),
-                    InlineKeyboardButton(
-                        text="↩️", callback_data=ChangeMonth(year=year).pack()
-                    ),
-                    InlineKeyboardButton(text="▶️", callback_data=next_data.pack()),
-                )
-            )
-        builder.row(*bottom_menu)
+            bottom_menu.button(text="◀️", callback_data=prev_data)
+            bottom_menu.button(text="↩️", callback_data=ChangeMonth(year=year))
+            bottom_menu.button(text="▶️", callback_data=next_data)
+        builder.row(*(bottom_menu.export()[0]))
         builder.row(InlineKeyboardButton(text="Reset", callback_data="reset_calendar"))
 
         return builder.as_markup()
@@ -251,6 +227,8 @@ class Calendar:
 
     @staticmethod
     async def reset(callback: CallbackQuery, locale: str):
-        await callback.message.edit_reply_markup(
-            reply_markup=Calendar.generate_keyboard(locale)
-        )
+        reply_markup = Calendar.generate_keyboard(locale)
+        if reply_markup != callback.message.reply_markup:
+            await callback.message.edit_reply_markup(
+                reply_markup=Calendar.generate_keyboard(locale)
+            )

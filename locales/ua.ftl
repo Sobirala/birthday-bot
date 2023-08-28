@@ -157,6 +157,9 @@ private-calendar =
 buttons-invite-bot =
     Додати Собіралу до групи
 
+buttons-add-birthday =
+    ➕ Додай свій день народження в календар
+
 buttons-reset-user =
     Змінити дані
 

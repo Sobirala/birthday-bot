@@ -23,7 +23,7 @@ async def invite_bot(event: ChatMemberUpdated, uow: UnitOfWork, bot: Bot, i18n: 
         await bot.send_message(
             chat_id=event.chat.id,
             text=i18n.group.start(),
-            reply_markup=await register_keyboard(bot, event.chat.id)
+            reply_markup=await register_keyboard(bot, event.chat.id, i18n)
         )
 
 
@@ -31,6 +31,6 @@ async def migrate_chat(message: Message, uow: UnitOfWork, bot: Bot, i18n: Transl
     await uow.groups.update(GroupFilter(chat_id=message.migrate_from_chat_id), chat_id=message.chat.id)
     await message.answer(
         i18n.group.migrate(),
-        reply_markup=await register_keyboard(bot, message.chat.id)
+        reply_markup=await register_keyboard(bot, message.chat.id, i18n)
     )
     cache[message.chat.id] = True

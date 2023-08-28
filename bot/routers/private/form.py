@@ -174,11 +174,14 @@ async def confirm_address(
             timezone=data["timezone"],
             birthday=datetime.strptime(data["birthday"], "%d/%m/%Y"),
         )
+
         if await uow.users.check_exists(UserFilter(user_id=callback.from_user.id)):
             user = await uow.users.update(UserFilter(user_id=callback.from_user.id), **info)
         else:
             user = User(user_id=callback.from_user.id, **info)
             await uow.users.create(user)
+
+        await callback.message.edit_reply_markup()
         if "chat_id" in data:
             group = await uow.groups.find_one(GroupFilter(chat_id=data["chat_id"]), options=[selectinload(Group.users)])
             group.users.append(user)
@@ -193,18 +196,18 @@ async def confirm_address(
                         ChatMemberStatus.ADMINISTRATOR,
                 ):
                     is_admin = True
-                await callback.message.edit_text(
+                await callback.message.answer(
                     i18n.private.form.confirm(title=chat.title, is_admin=is_admin)
                 )
             except TelegramBadRequest:
                 return await callback.message.answer(i18n.error.group.notfound())
         else:
-            await callback.message.edit_text("Ваші дані оновлено")
+            await callback.message.answer("Ваші дані оновлено")
 
         await state.clear()
     else:
         await state.set_state(Form.address)
-        await callback.message.edit_text(i18n.private.form.disallow.address())
+        await callback.message.answer(i18n.private.form.disallow.address())
 
 
 async def remove_extra(message: Message):

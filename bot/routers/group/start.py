@@ -15,5 +15,5 @@ async def start_group(message: Message, uow: UnitOfWork, bot: Bot, i18n: Transla
 
     await message.answer(
         i18n.group.start(),
-        reply_markup=await register_keyboard(bot, message.chat.id),
+        reply_markup=await register_keyboard(bot, message.chat.id, i18n),
     )
