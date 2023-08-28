@@ -3,6 +3,8 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.enums.parse_mode import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiohttp import web
 from redis import asyncio as aioredis
 from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -18,7 +20,12 @@ from bot.translator.hub import Translator
 from bot.utils.logger import setup_logger
 
 
-async def main():
+async def on_startup(bot: Bot):
+    await set_bot_commands(bot)
+    await bot.set_webhook(f"{settings.BASE_WEBHOOK_URL}{settings.WEBHOOK_PATH}", secret_token=settings.WEBHOOK_SECRET)
+
+
+def main():
     setup_logger()
     engine = create_async_engine(
         URL.create(
@@ -44,8 +51,10 @@ async def main():
     bot = Bot(token=settings.TOKEN.get_secret_value(), parse_mode=ParseMode.HTML)
     dp = Dispatcher(storage=storage)
 
+    dp.startup.register(on_startup)
+
     scheduler = Scheduler(bot, async_session)
-    await scheduler.start()
+    scheduler.start()
 
     Calendar.register_widget(dp)
     translator = Translator()
@@ -55,11 +64,19 @@ async def main():
 
     dp.include_router(router)
 
-    await dp.start_polling(bot)
-    await set_bot_commands(bot)
-
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    if settings.USE_WEBHOOK:
+        app = web.Application()
+        webhook_requests_handler = SimpleRequestHandler(
+            dispatcher=dp,
+            bot=bot,
+            secret_token=settings.WEBHOOK_SECRET
+        )
+        webhook_requests_handler.register(app, path=settings.WEBHOOK_PATH)
+        setup_application(app, dp, bot=bot)
+        web.run_app(app, host=settings.WEB_SERVER_HOST, port=settings.WEB_SERVER_PORT)
+    else:
+        dp.run_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

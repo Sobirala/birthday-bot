@@ -21,7 +21,7 @@ class Scheduler:
         self._scheduler = AsyncIOScheduler()
         self._logger = structlog.get_logger()
 
-    async def start(self):
+    def start(self):
         self._scheduler.start()
 
     async def congratulations(self):

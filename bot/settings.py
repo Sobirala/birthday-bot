@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     LOGLEVEL: Optional[str] = "DEBUG"
     DONATE_LINK: str = "https://www.buymeacoffee.com/kulunchick"
 
+    USE_WEBHOOK: bool = False
+    WEB_SERVER_HOST: str = "127.0.0.1"
+    WEB_SERVER_PORT: int = 8080
+    WEBHOOK_PATH: str = "/webhook"
+    WEBHOOK_SECRET: str = "my-secret"
+    BASE_WEBHOOK_URL: Optional[str] = None
+
     POSTGRES_HOST: str
     POSTGRES_PORT: int
     POSTGRES_USER: str
