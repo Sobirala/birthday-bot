@@ -3,10 +3,10 @@ from typing import List
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from fluentogram import TranslatorRunner
+from aiogram_i18n import I18nContext
 
-from bot.models import Group
 from bot.enums.group_actions import GroupActions
+from bot.models import Group
 
 
 class SelectGroup(CallbackData, prefix="group"):
@@ -15,12 +15,9 @@ class SelectGroup(CallbackData, prefix="group"):
     title: str
 
 
-def _build_group_keyboard(builder: InlineKeyboardBuilder, groups: List[Group], action: GroupActions):
+def _build_group_keyboard(builder: InlineKeyboardBuilder, groups: List[Group], action: GroupActions) -> None:
     for group in groups:
-        builder.button(
-            text=group.title,
-            callback_data=SelectGroup(action=action, chat_id=group.chat_id, title=group.title)
-        )
+        builder.button(text=group.title, callback_data=SelectGroup(action=action, chat_id=group.id, title=group.title))
     builder.adjust(2)
 
 
@@ -32,7 +29,7 @@ def select_calendar_group(groups: List[Group]) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def select_remove_group(groups: List[Group], i18n: TranslatorRunner) -> InlineKeyboardMarkup:
+def select_remove_group(groups: List[Group], i18n: I18nContext) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     _build_group_keyboard(builder, groups, GroupActions.REMOVE)

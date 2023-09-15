@@ -18,4 +18,4 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY . .
 
-CMD ["python", "-m", "bot"]
+CMD ["python", "-m", "bot.main"]

@@ -1,6 +1,9 @@
+from typing import List, Tuple
+
 from aiogram import Bot
 from aiogram.types import (
     BotCommand,
+    BotCommandScope,
     BotCommandScopeAllChatAdministrators,
     BotCommandScopeAllGroupChats,
     BotCommandScopeAllPrivateChats,
@@ -8,51 +11,31 @@ from aiogram.types import (
 
 
 async def set_bot_commands(bot: Bot) -> None:
-    uk_commands = (
+    uk_commands: Tuple[Tuple[List[BotCommand], BotCommandScope]] = (  # type: ignore[assignment]
         (
             [
-                BotCommand(
-                    command="start", description="Вивести стартове повідомлення"
-                ),
-                BotCommand(
-                    command="calendar",
-                    description="Переглянути всі дні народження групи",
-                ),
+                BotCommand(command="start", description="Вивести стартове повідомлення"),
+                BotCommand(command="calendar", description="Переглянути всі дні народження групи"),
                 BotCommand(command="reset", description="Змінити дані про себе"),
                 BotCommand(command="removeme", description="Видалити дані про себе"),
-                BotCommand(
-                    command="donate",
-                    description="Допомогти проекту"
-                )
+                BotCommand(command="donate", description="Допомогти проекту")
             ],
             BotCommandScopeAllPrivateChats(),
         ),
         (
             [
-                BotCommand(
-                    command="start",
-                    description="Вивести повідомлення з пропозицією додати ДН до календаря групи",
-                ),
-                BotCommand(
-                    command="donate",
-                    description="Допомогти проекту"
-                )
+                BotCommand(command="start", description="Вивести повідомлення з пропозицією додати ДН до календаря групи"),
+                BotCommand(command="donate", description="Допомогти проекту")
             ],
             BotCommandScopeAllGroupChats(),
         ),
         (
             [
-                BotCommand(
-                    command="start",
-                    description="Вивести повідомлення з пропозицією додати ДН до календаря групи",
-                ),
-                BotCommand(
-                    command="collect",
-                    description="Увімкнути чи вимкнути збори грошей (тільки для адміністраторів групи)",
-                ),
+                BotCommand(command="start", description="Вивести повідомлення з пропозицією додати ДН до календаря групи"),
+                BotCommand(command="collect", description="Увімкнути чи вимкнути збори грошей (тільки для адміністраторів групи)"),
             ],
             BotCommandScopeAllChatAdministrators(),
-        ),
+        )
     )
     for commands, scope in uk_commands:
-        await bot.set_my_commands(commands=commands, scope=scope, language_code="uk")
+        await bot.set_my_commands(commands=commands, scope=scope, language_code="uk")  # type: ignore[arg-type]

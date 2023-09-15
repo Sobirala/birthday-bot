@@ -1,4 +1,5 @@
-from typing import Self
+from types import TracebackType
+from typing import Self, Type
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,14 +26,14 @@ class UnitOfWork:
 
         return self
 
-    async def __aexit__(self, *args):
+    async def __aexit__(self, exc_type: Type[BaseException], exc_val: BaseException, exc_tb: TracebackType) -> None:
         ...
 
-    async def commit(self):
+    async def commit(self) -> None:
         await self._session.commit()
 
-    async def delete(self, model: Base):
-        await self.delete(model)
+    async def delete(self, model: Base) -> None:
+        await self._session.delete(model)
 
-    async def rollback(self):
+    async def rollback(self) -> None:
         await self._session.rollback()

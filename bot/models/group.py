@@ -3,15 +3,15 @@ from typing import List
 from sqlalchemy import BigInteger, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from bot.enums import Language
 from bot.models.base import Base, TimestampMixin
 from bot.models.user import User
-from bot.enums import Language
 
 
 class Group(TimestampMixin, Base):
     __tablename__ = "groups"
 
-    chat_id: Mapped[int] = mapped_column(BigInteger, index=True, unique=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     title: Mapped[str]
     language: Mapped[Language] = mapped_column(default=Language.UA)
     collect: Mapped[bool] = mapped_column(default=False)

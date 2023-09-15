@@ -1,18 +1,17 @@
 import datetime
 from typing import Optional, Sequence
 
-from sqlalchemy import select, and_, ColumnElement, func, Interval
+from sqlalchemy import ColumnElement, Interval, and_, func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.base import ExecutableOption
 from sqlalchemy.sql.functions import concat
 
-from bot.models import User, Group
-from bot.repositories.base import BaseRepository, BaseFilter
 from bot.enums import Gender
+from bot.models import Group, User
+from bot.repositories.base import BaseFilter, BaseRepository
 
 
 class UserFilter(BaseFilter):
-    user_id: Optional[int] = None
     fullname: Optional[str] = None
     gender: Optional[Gender] = None
     timezone: Optional[str] = None
@@ -25,8 +24,8 @@ class UserRepository(BaseRepository[User, UserFilter]):
     async def get_user_in_group(self, user_id: int, chat_id: int, options: Optional[Sequence[ExecutableOption]] = None) -> Optional[User]:
         query = select(User) \
             .join(User.groups) \
-            .filter(Group.chat_id == chat_id) \
-            .filter(User.user_id == user_id) \
+            .filter(Group.id == chat_id) \
+            .filter(User.id == user_id) \
             .limit(1)
 
         if options is not None:
@@ -43,7 +42,7 @@ class UserRepository(BaseRepository[User, UserFilter]):
     def _get_filter(interval: int = 0) -> ColumnElement[bool]:
         date = func.current_date()
         if interval != 0:
-            date += func.cast(concat(interval, ' DAYS'), Interval)
+            date += func.cast(concat(interval, ' DAYS'), Interval)  # type: ignore[assignment]
         return and_(
             func.extract("MONTH", User.birthday) == func.extract("MONTH", date),
             func.extract("DAY", User.birthday) == func.extract("DAY", date),

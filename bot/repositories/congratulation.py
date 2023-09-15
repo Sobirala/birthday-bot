@@ -1,10 +1,10 @@
 from typing import Optional
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
-from bot.models import Congratulation
-from bot.repositories.base import BaseRepository, BaseFilter
 from bot.enums import Language
+from bot.models import Congratulation
+from bot.repositories.base import BaseFilter, BaseRepository
 
 
 class CongratulationFilter(BaseFilter):
@@ -19,6 +19,6 @@ class CongratulationRepository(BaseRepository[Congratulation, CongratulationFilt
     async def random(self, model_filter: CongratulationFilter) -> Optional[Congratulation]:
         query = select(self.__model__).order_by(func.random())
 
-        query = self._set_filter(query, model_filter, 1)
+        query = self._set_filter_with_additions(query, model_filter, 1)
 
         return (await self._session.scalars(query)).first()

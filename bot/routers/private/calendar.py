@@ -1,23 +1,22 @@
-import calendar
 from itertools import groupby
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message
+from aiogram.utils.formatting import Bold, Text, TextLink, as_list
+from aiogram_i18n import I18nContext
 from babel.core import Locale
 from babel.dates import format_datetime
-from fluentogram import TranslatorRunner
 from sqlalchemy.orm import selectinload
 
 from bot.keyboards.groups import SelectGroup, select_calendar_group
-from bot.models import User, Group
+from bot.models import Group, User
 from bot.repositories.group import GroupFilter
 from bot.repositories.uow import UnitOfWork
 from bot.repositories.user import UserFilter
 
 
-async def select_calendar(message: Message, uow: UnitOfWork, i18n: TranslatorRunner):
-    user = await uow.users.find_one(UserFilter(user_id=message.from_user.id), options=[selectinload(User.groups)])
+async def select_calendar(message: Message, uow: UnitOfWork, i18n: I18nContext) -> None:
+    user = await uow.users.find_one(UserFilter(id=message.from_user.id), options=[selectinload(User.groups)])  # type: ignore[union-attr]
     if user and user.groups:
         await message.answer(
             i18n.private.select.calendar(),
@@ -30,31 +29,34 @@ async def print_calendar(
         bot: Bot,
         callback_data: SelectGroup,
         uow: UnitOfWork,
-        i18n: TranslatorRunner,
+        i18n: I18nContext,
         locale: str
-):
-    try:
-        chat = await bot.get_chat(chat_id=callback_data.chat_id)
+) -> None:
+    chat = await bot.get_chat(chat_id=callback_data.chat_id)
 
-        sender = await uow.users.get_user_in_group(callback.from_user.id, callback_data.chat_id)
-        if not sender:
-            return await callback.message.answer(i18n.error.user.notin.group())
+    sender = await uow.users.get_user_in_group(callback.from_user.id, callback_data.chat_id)
+    if not sender:
+        await callback.message.answer(i18n.error.user.notin.group())  # type: ignore[union-attr]
+        return
 
-        group = await uow.groups.find_one(GroupFilter(chat_id=callback_data.chat_id), options=[selectinload(Group.users)])
-        if len(group.users) == 1:
-            return await callback.message.answer(i18n.warning.only.sender.ingroup())
+    group = await uow.groups.find_one(GroupFilter(id=callback_data.chat_id),
+                                      options=[selectinload(Group.users)])
+    if len(group.users) == 1:  # type: ignore[union-attr]
+        await callback.message.answer(i18n.warning.only.sender.ingroup())  # type: ignore[union-attr]
+        return
 
-        message = f"{i18n.private.calendar(title=chat.title)}\n\n"
-        c = calendar.LocaleTextCalendar(calendar.MONDAY, (locale, None))
-        for month, users in groupby(group.users, lambda x: x.birthday.month):
-            message += f"{c.formatmonthname(theyear=2023, themonth=month, width=10, withyear=False).strip().title()}\n"
-            for user in users:
-                message += "<a href='tg://user?id={id}'>{fullname}</a>, {birthday}\n".format(
-                    id=user.user_id,
-                    fullname=user.fullname,
-                    birthday=format_datetime(user.birthday, format='dd MMMM', locale=Locale.parse(locale, sep='-'))
-                )
-            message += "\n"
-        await callback.message.answer(message)
-    except TelegramBadRequest:
-        await callback.message.answer(i18n.error.bot.was.kicked(title=callback_data.title))
+    b_locale = Locale.parse(locale)
+    months = b_locale.months['stand-alone']['wide']
+    message = as_list(
+        *(as_list(
+            Bold(months[month].title()),
+            *(Text(
+                TextLink(user.fullname, url=f"tg://user?id={user.user_id}"),
+                ", ",
+                format_datetime(user.birthday, format='dd MMMM', locale=b_locale)
+            ) for user in users),
+            sep="\n"
+        ) for month, users in groupby(group.users, lambda x: x.birthday.month)),  # type: ignore[union-attr]
+        sep="\n\n"
+    )
+    await callback.message.answer(i18n.private.calendar(title=chat.title) + "\n\n" + message.as_html())  # type: ignore[union-attr]

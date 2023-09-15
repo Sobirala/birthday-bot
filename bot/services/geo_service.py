@@ -1,16 +1,17 @@
-from typing import Any, Dict, Optional, Self
+from types import TracebackType
+from typing import Any, Dict, Optional, Self, Type
 
-from geopy import GoogleV3, Location, Point
-from geopy.adapters import AioHTTPAdapter
-from pytz.tzinfo import BaseTzInfo
+from geopy import GoogleV3, Location  # type: ignore
+from geopy.adapters import AioHTTPAdapter  # type: ignore
+from tzfpy import get_tz
 
 from bot.settings import settings
 
 
-class GoogleMaps:
+class GeoService:
     client: GoogleV3
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.client = GoogleV3(
             api_key=settings.GOOGLE_TOKEN.get_secret_value(),
             user_agent="birthday_bot",
@@ -21,12 +22,11 @@ class GoogleMaps:
     async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Type[BaseException], exc_val: BaseException, exc_tb: TracebackType) -> None:
         await self.client.__aexit__(exc_type, exc_val, exc_tb)
 
     async def get_address(self, city: str, language: str) -> Location:
-        address = await self.client.geocode(city, exactly_one=True, language=language)
-        return address
+        return await self.client.geocode(city, exactly_one=True, language=language)
 
     @staticmethod
     async def get_country_by_address(address: Any) -> Optional[Dict[str, Any]]:
@@ -35,10 +35,6 @@ class GoogleMaps:
                 return address_component
         return None
 
-    async def get_timezone(self, latitude: float, longitude: float) -> BaseTzInfo:
-        timezone = (
-            await self.client.reverse_timezone(
-                Point(latitude=latitude, longitude=longitude)
-            )
-        ).pytz_timezone
-        return timezone
+    @staticmethod
+    async def get_timezone(latitude: float, longitude: float) -> str:
+        return get_tz(longitude, latitude)

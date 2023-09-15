@@ -1,68 +1,96 @@
-import asyncio
+from typing import Any
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums.parse_mode import ParseMode
-from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.fsm.storage.redis import (
+    DefaultKeyBuilder,
+    RedisEventIsolation,
+    RedisStorage,
+)
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiogram_dialog import setup_dialogs
+from aiogram_i18n import I18nMiddleware
+from aiogram_i18n.cores import FluentCompileCore
+from aiogram_i18n.managers import ConstManager
 from aiohttp import web
-from redis import asyncio as aioredis
+from redis.asyncio import Redis
 from sqlalchemy import URL
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from bot.commands import set_bot_commands
-from bot.settings import settings
-from bot.keyboards.calendar_widget import Calendar
+from bot.enums import Language
 from bot.middlewares.database import SessionMaker
-from bot.middlewares.i18n import TranslatorRunnerMiddleware
+from bot.middlewares.throttling import ThrottlingMiddleware
 from bot.routers import router
 from bot.services.scheduler import Scheduler
-from bot.translator.hub import Translator
+from bot.settings import settings
 from bot.utils.logger import setup_logger
 
+engine = create_async_engine(
+    URL.create(
+        "postgresql+asyncpg",
+        username=settings.POSTGRES_USER,
+        password=settings.POSTGRES_PASSWORD.get_secret_value(),
+        host=settings.POSTGRES_HOST,
+        port=settings.POSTGRES_PORT,
+        database=settings.POSTGRES_DB,
+    )
+)
+async_session = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
 
-async def on_startup(bot: Bot):
+redis: "Redis[Any]" = Redis(
+    host=settings.REDIS_HOST,
+    port=settings.REDIS_PORT,
+    username=settings.REDIS_USERNAME,
+    password=settings.REDIS_PASSWORD.get_secret_value(),
+    decode_responses=True
+)
+
+core = FluentCompileCore(path="locales/{locale}/LC_MESSAGES")
+
+
+async def on_startup(bot: Bot) -> None:
+    scheduler = Scheduler(bot, async_session, core)
+    scheduler.start()
     await bot.delete_webhook()
     await set_bot_commands(bot)
     if settings.USE_WEBHOOK:
         await bot.set_webhook(f"{settings.BASE_WEBHOOK_URL}{settings.WEBHOOK_PATH}", secret_token=settings.WEBHOOK_SECRET)
 
 
-def main():
+async def on_shutdown(bot: Bot) -> None:
+    await bot.delete_webhook()
+
+
+def main() -> None:
     setup_logger()
-    engine = create_async_engine(
-        URL.create(
-            "postgresql+asyncpg",
-            username=settings.POSTGRES_USER,
-            password=settings.POSTGRES_PASSWORD.get_secret_value(),
-            host=settings.POSTGRES_HOST,
-            port=settings.POSTGRES_PORT,
-            database=settings.POSTGRES_DB,
-        )
-    )
-    async_session = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
 
-    redis = aioredis.Redis(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        username=settings.REDIS_USERNAME,
-        password=settings.REDIS_PASSWORD.get_secret_value(),
-        decode_responses=True
-    )
-
-    storage = RedisStorage(redis=redis)
+    key_builder = DefaultKeyBuilder(with_destiny=True)
+    storage = RedisStorage(redis, key_builder)
+    events_isolation = RedisEventIsolation(redis, key_builder)
     bot = Bot(token=settings.TOKEN.get_secret_value(), parse_mode=ParseMode.HTML)
-    dp = Dispatcher(storage=storage)
+    dp = Dispatcher(
+        storage=storage,
+        events_isolation=events_isolation
+    )
 
     dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
+    setup_dialogs(dp)
 
-    scheduler = Scheduler(bot, async_session)
-    scheduler.start()
-
-    Calendar.register_widget(dp)
-    translator = Translator()
+    i18n_middleware = I18nMiddleware(
+        core=core,
+        manager=ConstManager(default_locale=Language.UA),
+        locale_key="locale",
+        default_locale=Language.UA
+    )
+    i18n_middleware.setup(dp)
 
     dp.update.middleware(SessionMaker(sessionmaker=async_session))
-    dp.update.middleware(TranslatorRunnerMiddleware(translator=translator))
+    dp.update.middleware(ThrottlingMiddleware())
 
     dp.include_router(router)
 

@@ -1,214 +1,192 @@
 from datetime import date, datetime
+from typing import Any, Dict
 
-from aiogram import Bot
-from aiogram.enums import ChatMemberStatus
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import CommandObject
-from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram import Bot, F
+from aiogram.enums import ChatMemberStatus, ContentType
+from aiogram.types import CallbackQuery, Message, User
+from aiogram_dialog import ChatEvent, Dialog, DialogManager, ShowMode, StartMode, Window
+from aiogram_dialog.widgets.input import MessageInput
+from aiogram_dialog.widgets.kbd import Button, Next, Row, Select, SwitchTo
+from aiogram_dialog.widgets.kbd.calendar_kbd import ManagedCalendar, OnDateSelected
+from aiogram_dialog.widgets.kbd.select import OnItemClick
+from aiogram_dialog.widgets.text import Multi
+from aiogram_i18n import I18nContext
 from babel.dates import format_datetime
-from fluentogram import TranslatorRunner
 from sqlalchemy.orm import selectinload
 
-from bot.keyboards.calendar_widget import Calendar, SelectDate
-from bot.keyboards.confirm import SelectConfirm, confirm_keyboard
-from bot.keyboards.gender import SelectGender, gender_keyboard
-from bot.models import Group, User
+from bot.enums import ConfirmTypes, Gender, Language
+from bot.keyboards.custom_calendar import CustomCalendar
+from bot.models import Group
+from bot.models import User as UserModel
 from bot.repositories.group import GroupFilter
 from bot.repositories.uow import UnitOfWork
 from bot.repositories.user import UserFilter
-from bot.services.google_maps import GoogleMaps
+from bot.services.geo_service import GeoService
 from bot.states.form import Form
-from bot.enums import Gender, ConfirmTypes
+from bot.utils.i18n_format import I18NFormat
 
 
-async def calculate_age(birthdate: date) -> int:
-    today = date.today()
-    one_or_zero = (today.month, today.day) < (birthdate.month, birthdate.day)
-    year_difference = today.year - birthdate.year
-    age = year_difference - one_or_zero
-    return age
+async def get_confirm_data(chat_id: int, user_id: int, bot: Bot) -> Dict[str, Any]:
+    chat = await bot.get_chat(chat_id=chat_id)
+    member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+    return {
+        "title": chat.title,
+        "is_admin": True if member.status in (ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR) else False
+    }
 
 
-async def start_form(
-        message: Message,
-        bot: Bot,
-        uow: UnitOfWork,
-        i18n: TranslatorRunner,
-        locale: str,
-        command: CommandObject,
-        state: FSMContext,
-):
-    await state.clear()
-    group = await uow.groups.find_one(GroupFilter(chat_id=int(command.args)), options=[selectinload(Group.users)])
-
-    user = await uow.users.find_one(UserFilter(user_id=message.chat.id), options=[selectinload(User.groups)])
+async def start_form(message: Message, chat_id: int, uow: UnitOfWork, i18n: I18nContext, bot: Bot, dialog_manager: DialogManager) -> None:
+    group = await uow.groups.find_one(GroupFilter(id=chat_id), options=[selectinload(Group.users)])
+    user = await uow.users.find_one(UserFilter(id=message.chat.id), options=[selectinload(UserModel.groups)])
 
     if not group:
-        return await message.answer(i18n.error.group.notfound())
+        await message.answer(i18n.error.group.notfound())
+        return
 
-    try:
-        chat = await bot.get_chat(chat_id=command.args)
-        member = await bot.get_chat_member(
-            chat_id=command.args, user_id=message.chat.id
-        )
-        if member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.KICKED):
-            return await message.answer(i18n.error.group.notfound())
-    except TelegramBadRequest:
-        return await message.answer(i18n.error.group.notfound())
-
+    data = await get_confirm_data(chat_id, message.chat.id, bot)
     if user:
-        if group in user.groups:
-            return await message.answer(i18n.private.already.added(title=chat.title))
+        if user in group.users:
+            await message.answer(i18n.private.already.added(**data))
         else:
             group.users.append(user)
+            await message.answer(i18n.private.form.confirm(**data))
+        return
 
-            is_admin = False
-            if member.status in (
-                    ChatMemberStatus.CREATOR,
-                    ChatMemberStatus.ADMINISTRATOR,
-            ):
-                is_admin = True
+    await message.answer(i18n.private.form.start(title=data["title"]))
+    await dialog_manager.start(Form.birthday, mode=StartMode.RESET_STACK, show_mode=ShowMode.SEND)
+    dialog_manager.dialog_data["chat_id"] = chat_id
 
-            return await message.answer(
-                i18n.private.form.confirm(title=chat.title, is_admin=is_admin)
-            )
 
-    await state.set_state(Form.birthday)
-    await state.update_data(chat_id=int(command.args))
-    await message.answer(i18n.private.form.start(title=chat.title))
-    await message.answer(
-        i18n.private.form.birthday(),
-        reply_markup=Calendar.generate_keyboard(locale),
+class OnSelectDate(OnDateSelected):
+    async def __call__(self, event: ChatEvent, select: ManagedCalendar, dialog_manager: DialogManager, selected_date: date) -> None:
+        dialog_manager.dialog_data["birthday"] = selected_date.strftime("%d/%m/%Y")
+        await dialog_manager.next()
+
+
+class OnSelectGender(OnItemClick[Any, Gender]):
+    async def __call__(self, event: CallbackQuery, select: Any, dialog_manager: DialogManager, data: Gender) -> None:
+        dialog_manager.dialog_data["gender"] = data
+        await dialog_manager.next()
+
+
+async def get_confirm_birthday_data(dialog_manager: DialogManager, **kwargs: Any) -> Dict[str, Any]:
+    return {
+        "birthday": datetime.strptime(dialog_manager.dialog_data["birthday"], "%d/%m/%Y"),
+        "item": dialog_manager.dialog_data.get("gender")
+    }
+
+
+async def address_handler(message: Message, message_input: MessageInput, manager: DialogManager) -> None:
+    locale = manager.middleware_data.get("locale", Language.UA)
+    i18n: I18nContext = manager.middleware_data["i18n"]
+    async with GeoService() as api:
+        address = await api.get_address(message.text, locale.replace("_", "-"))  # type: ignore[arg-type]
+        if not address:
+            await message.answer(i18n.error.address.notfound())
+            return
+        timezone = await api.get_timezone(address.latitude, address.longitude)
+    manager.dialog_data["address"] = address.address
+    manager.dialog_data["timezone"] = timezone
+    await manager.next()
+
+
+async def get_confirm_address_data(dialog_manager: DialogManager, **_: Any) -> Dict[str, Any]:
+    locale = dialog_manager.middleware_data.get("locale", Language.UA)
+    return {
+        "address": dialog_manager.dialog_data.get("address"),
+        "now": format_datetime(
+            datetime=datetime.utcnow(),
+            format="dd MMMM, HH:mm",
+            tzinfo=dialog_manager.dialog_data.get("timezone"),
+            locale=locale
+        )
+    }
+
+
+async def confirm_user(callback: CallbackQuery, widget: Button, manager: DialogManager) -> None:
+    data = manager.dialog_data
+    locale = manager.middleware_data.get("locale", Language.UA)
+    uow: UnitOfWork = manager.middleware_data["uow"]
+    bot: Bot = manager.middleware_data["bot"]
+    info = {
+        "fullname": callback.from_user.full_name,
+        "gender": Gender(data["gender"]),
+        "timezone": data["timezone"],
+        "language": locale,
+        "birthday": datetime.strptime(data["birthday"], "%d/%m/%Y"),
+    }
+    result = {}
+    user = UserModel(id=callback.from_user.id, **info)
+    if await uow.users.check_exists(UserFilter(id=callback.from_user.id)):
+        result["reset"] = True
+    else:
+        result.update(await get_confirm_data(data["chat_id"], callback.from_user.id, bot))
+    await uow.users.merge(user)
+    await manager.done(result)
+
+
+async def print_result(data: Dict[str, Any], manager: DialogManager) -> None:
+    user: User = manager.middleware_data["event_from_user"]
+    bot: Bot = manager.middleware_data["bot"]
+    i18n: I18nContext = manager.middleware_data["i18n"]
+    if "reset" in data:
+        await bot.send_message(user.id, i18n.private.reset.confirm())
+        return
+    await bot.send_message(
+        user.id,
+        i18n.private.form.confirm(**data)
     )
 
 
-async def input_birthday(
-        callback: CallbackQuery,
-        state: FSMContext,
-        callback_data: SelectDate,
-        i18n: TranslatorRunner,
-):
-    birthday = date(callback_data.year, callback_data.month, callback_data.day)
-    age = await calculate_age(birthday)
-    if age < 0 or age > 120:
-        return callback.answer("Неправильна дата")
-    await state.update_data(birthday=birthday.strftime("%d/%m/%Y"))
-    await state.set_state(Form.gender)
-    await callback.message.edit_reply_markup()
-    await callback.message.answer(i18n.private.form.gender(), reply_markup=gender_keyboard(i18n))
-
-
-async def input_gender(
-        callback: CallbackQuery,
-        state: FSMContext,
-        callback_data: SelectGender,
-        i18n: TranslatorRunner,
-):
-    data = await state.update_data(gender=callback_data.gender.value)
-    await state.set_state(Form.confirm_birthday)
-    await callback.message.edit_reply_markup()
-    await callback.message.answer(
-        i18n.private.form.confirm.birthday(
-            birthday=datetime.strptime(data["birthday"], "%d/%m/%Y"),
-            gender=callback_data.gender.value,
+form = Dialog(
+    Window(
+        Multi(
+            I18NFormat("private-form-birthday", when=~F["dialog_data"]),
+            I18NFormat("private-form-disallow-birthday", when=F["dialog_data"])
         ),
-        reply_markup=confirm_keyboard(i18n),
-    )
-
-
-async def confirm_birthday(
-        callback: CallbackQuery,
-        state: FSMContext,
-        callback_data: SelectConfirm,
-        i18n: TranslatorRunner,
-        locale: str,
-):
-    await callback.message.edit_reply_markup()
-    if callback_data.selected == ConfirmTypes.YES:
-        await state.set_state(Form.address)
-        await callback.message.answer(i18n.private.form.address())
-    else:
-        await state.set_state(Form.birthday)
-        await callback.message.answer(
-            i18n.private.form.disallow.birthday(),
-            reply_markup=await Calendar.generate_keyboard(locale),
-        )
-
-
-async def input_address(message: Message, state: FSMContext, i18n: TranslatorRunner, locale: str):
-    async with GoogleMaps() as api:
-        address = await api.get_address(message.text, "uk-UA")
-        if address:
-            timezone = await api.get_timezone(address.latitude, address.longitude)
-            await state.update_data(timezone=timezone.zone)
-            await state.set_state(Form.confirm_address)
-            return await message.answer(
-                i18n.private.form.confirm.address(
-                    address=address.address,
-                    now=format_datetime(
-                        datetime=datetime.utcnow(),
-                        format="dd MMMM, HH:mm",
-                        tzinfo=timezone,
-                        locale=locale
-                    ),
-                ),
-                reply_markup=confirm_keyboard(i18n),
+        CustomCalendar(
+            on_click=OnSelectDate(),
+            id="calendar"
+        ),
+        state=Form.birthday
+    ),
+    Window(
+        I18NFormat("private-form-gender"),
+        Select(
+            I18NFormat("gender-names"),
+            items=list(Gender),
+            item_id_getter=lambda x: x.value,
+            on_click=OnSelectGender(),
+            id="gender"
+        ),
+        state=Form.gender
+    ),
+    Window(
+        I18NFormat("private-form-confirm-birthday"),
+        Row(
+            SwitchTo(I18NFormat("confirm", confirm=ConfirmTypes.NO), state=Form.birthday, id="declined"),
+            Next(I18NFormat("confirm", confirm=ConfirmTypes.YES))
+        ),
+        getter=get_confirm_birthday_data,
+        state=Form.confirm_birthday
+    ),
+    Window(
+        I18NFormat("private-form-address"),
+        MessageInput(address_handler, content_types=[ContentType.TEXT]),
+        state=Form.address
+    ),
+    Window(
+        I18NFormat("private-form-confirm-address"),
+        Row(
+            SwitchTo(I18NFormat("confirm", confirm=ConfirmTypes.NO), state=Form.address, id="declined"),
+            Button(
+                I18NFormat("confirm", confirm=ConfirmTypes.YES),
+                on_click=confirm_user,
+                id="confirm"
             )
-    return await message.answer(i18n.error.address.notfound())
-
-
-async def confirm_address(
-        callback: CallbackQuery,
-        uow: UnitOfWork,
-        state: FSMContext,
-        callback_data: SelectConfirm,
-        i18n: TranslatorRunner,
-        bot: Bot,
-):
-    if callback_data.selected == ConfirmTypes.YES:
-        data = await state.get_data()
-        info = dict(
-            fullname=callback.from_user.full_name,
-            gender=Gender(data["gender"]),
-            timezone=data["timezone"],
-            birthday=datetime.strptime(data["birthday"], "%d/%m/%Y"),
-        )
-
-        if await uow.users.check_exists(UserFilter(user_id=callback.from_user.id)):
-            user = await uow.users.update(UserFilter(user_id=callback.from_user.id), **info)
-        else:
-            user = User(user_id=callback.from_user.id, **info)
-            await uow.users.create(user)
-
-        await callback.message.edit_reply_markup()
-        if "chat_id" in data:
-            group = await uow.groups.find_one(GroupFilter(chat_id=data["chat_id"]), options=[selectinload(Group.users)])
-            group.users.append(user)
-            try:
-                chat = await bot.get_chat(chat_id=data["chat_id"])
-                member = await bot.get_chat_member(
-                    chat_id=data["chat_id"], user_id=callback.from_user.id
-                )
-                is_admin = False
-                if member.status in (
-                        ChatMemberStatus.CREATOR,
-                        ChatMemberStatus.ADMINISTRATOR,
-                ):
-                    is_admin = True
-                await callback.message.answer(
-                    i18n.private.form.confirm(title=chat.title, is_admin=is_admin)
-                )
-            except TelegramBadRequest:
-                return await callback.message.answer(i18n.error.group.notfound())
-        else:
-            await callback.message.answer("Ваші дані оновлено")
-
-        await state.clear()
-    else:
-        await state.set_state(Form.address)
-        await callback.message.answer(i18n.private.form.disallow.address())
-
-
-async def remove_extra(message: Message):
-    await message.delete()
+        ),
+        getter=get_confirm_address_data,
+        state=Form.confirm_address
+    ),
+    on_close=print_result
+)

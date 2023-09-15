@@ -10,9 +10,14 @@ services:
       - redis
       - postgres
     environment:
-      - DEBUG=${DEBUG:-0}
       - ADMINS=${ADMINS:-[1568892912]}
       - TOKEN=${TOKEN}
+      - DONATE_LINK=${DONATE_LINK}
+      - USE_WEBHOOK=${USE_WEBHOOK}
+      - WEB_SERVER_HOST=${WEB_SERVER_HOST}
+      - WEB_SERVER_PORT=${WEB_SERVER_PORT}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
+      - BASE_WEBHOOK_URL=${BASE_WEBHOOK_URL}
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -41,6 +46,21 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
 
+  backup:
+    image: eeshugerman/postgres-backup-s3:15
+    environment:
+      - SCHEDULE=${SCHEDULE}
+      - BACKUP_KEEP_DAYS=${BACKUP_KEEP_DAYS}
+      - PASSPHRASE=${PASSPHRASE}
+      - S3_REGION=${S3_REGION}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_PREFIX=backup
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DATABASE=${POSTGRES_DB:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
 
 
 volumes:

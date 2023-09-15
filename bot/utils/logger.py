@@ -4,7 +4,7 @@ import sys
 import structlog
 
 
-def setup_logger() -> structlog.typing.FilteringBoundLogger:
+def setup_logger() -> None:
     timestamper = structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S")
     shared_processors: list[structlog.typing.Processor] = [
         # Add log level to event dict.
