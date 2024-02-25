@@ -51,7 +51,7 @@ async def print_calendar(
         *(as_list(
             Bold(months[month].title()),
             *(Text(
-                TextLink(user.fullname, url=f"tg://user?id={user.user_id}"),
+                TextLink(user.fullname, url=f"tg://user?id={user.id}"),
                 ", ",
                 format_datetime(user.birthday, format='dd MMMM', locale=b_locale)
             ) for user in users),

@@ -1,6 +1,7 @@
 from typing import Any
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.enums.parse_mode import ParseMode
 from aiogram.fsm.storage.redis import (
     DefaultKeyBuilder,
@@ -71,7 +72,12 @@ def main() -> None:
     key_builder = DefaultKeyBuilder(with_destiny=True)
     storage = RedisStorage(redis, key_builder)
     events_isolation = RedisEventIsolation(redis, key_builder)
-    bot = Bot(token=settings.TOKEN.get_secret_value(), parse_mode=ParseMode.HTML)
+    bot = Bot(
+        token=settings.TOKEN.get_secret_value(),
+        default=DefaultBotProperties(
+            parse_mode=ParseMode.HTML
+        )
+    )
     dp = Dispatcher(
         storage=storage,
         events_isolation=events_isolation

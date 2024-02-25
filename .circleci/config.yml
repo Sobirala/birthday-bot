@@ -1,0 +1,23 @@
+version: 2.1
+jobs:
+  deploy:
+    docker:
+      - image: cimg/base:2024.01
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build and push to Docker Hub
+          command: |
+            docker build -t $DOCKERHUB_USERNAME/$IMAGE_NAME:latest .
+            docker login -u $DOCKERHUB_USERNAME -p $DOCKER_HUB_PASSWORD
+            docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:latest
+
+workflows:
+  deploy:
+    jobs:
+      - deploy

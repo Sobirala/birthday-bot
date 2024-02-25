@@ -1,5 +1,3 @@
-import logging
-
 import pytz
 import structlog
 from aiogram import Bot

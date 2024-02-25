@@ -3,7 +3,9 @@ from typing import Any, Dict
 
 from aiogram import Bot, F
 from aiogram.enums import ChatMemberStatus, ContentType
-from aiogram.types import CallbackQuery, Message, User
+from aiogram.exceptions import TelegramForbiddenError, TelegramNotFound
+from aiogram.filters import ExceptionTypeFilter
+from aiogram.types import CallbackQuery, ErrorEvent, Message, User
 from aiogram_dialog import ChatEvent, Dialog, DialogManager, ShowMode, StartMode, Window
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Next, Row, Select, SwitchTo
@@ -132,10 +134,11 @@ async def print_result(data: Dict[str, Any], manager: DialogManager) -> None:
     if "reset" in data:
         await bot.send_message(user.id, i18n.private.reset.confirm())
         return
-    await bot.send_message(
-        user.id,
-        i18n.private.form.confirm(**data)
-    )
+    await bot.send_message(user.id, i18n.private.form.confirm(**data))
+
+
+async def group_not_found(event: ErrorEvent, message: Message, i18n: I18nContext) -> None:
+    await message.answer(i18n.error.group.notfound())
 
 
 form = Dialog(
@@ -189,4 +192,10 @@ form = Dialog(
         state=Form.confirm_address
     ),
     on_close=print_result
+)
+
+form.error.register(
+    group_not_found,
+    ExceptionTypeFilter(TelegramForbiddenError, TelegramNotFound),
+    F.update.message.as_("message") | F.update.callback_query.message.as_("message")
 )
