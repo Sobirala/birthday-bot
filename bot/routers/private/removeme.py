@@ -1,4 +1,4 @@
-from aiogram import Bot
+from aiogram import Bot, html
 from aiogram.types import CallbackQuery, Message
 from aiogram_i18n import I18nContext
 from sqlalchemy.orm import selectinload
@@ -44,7 +44,7 @@ async def remove_group(
         return
     sender.groups.remove(group)
 
-    await callback.message.edit_text(i18n.private.remove.group(title=chat.title))  # type: ignore[union-attr]
+    await callback.message.edit_text(i18n.private.remove.group(title=html.quote(chat.title)))  # type: ignore[union-attr]
 
 
 async def remove_all(callback: CallbackQuery, uow: UnitOfWork, i18n: I18nContext) -> None:

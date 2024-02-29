@@ -1,4 +1,4 @@
-ARG PYTHON=3.12.2-bookworm
+ARG PYTHON=3.12-slim-bookworm
 # build stage
 FROM python:${PYTHON} AS builder
 

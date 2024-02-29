@@ -1,6 +1,6 @@
 from itertools import groupby
 
-from aiogram import Bot
+from aiogram import Bot, html
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.formatting import Bold, Text, TextLink, as_list
 from aiogram_i18n import I18nContext
@@ -48,6 +48,7 @@ async def print_calendar(
     b_locale = Locale.parse(locale)
     months = b_locale.months['stand-alone']['wide']
     message = as_list(
+        i18n.private.calendar(title=html.quote(chat.title)),
         *(as_list(
             Bold(months[month].title()),
             *(Text(
@@ -59,4 +60,4 @@ async def print_calendar(
         ) for month, users in groupby(group.users, lambda x: x.birthday.month)),  # type: ignore[union-attr]
         sep="\n\n"
     )
-    await callback.message.answer(i18n.private.calendar(title=chat.title) + "\n\n" + message.as_html())  # type: ignore[union-attr]
+    await callback.message.answer(**message.as_kwargs(replace_parse_mode=False))  # type: ignore[union-attr]
