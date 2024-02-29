@@ -44,7 +44,7 @@ async def remove_group(
         return
     sender.groups.remove(group)
 
-    await callback.message.edit_text(i18n.private.remove.group(title=html.quote(chat.title)))  # type: ignore[union-attr]
+    await callback.message.edit_text(i18n.private.remove.group(title=html.quote(chat.title)))  # type: ignore
 
 
 async def remove_all(callback: CallbackQuery, uow: UnitOfWork, i18n: I18nContext) -> None:

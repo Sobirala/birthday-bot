@@ -48,7 +48,7 @@ async def print_calendar(
     b_locale = Locale.parse(locale)
     months = b_locale.months['stand-alone']['wide']
     message = as_list(
-        i18n.private.calendar(title=html.quote(chat.title)),
+        i18n.private.calendar(title=html.quote(chat.title)),  # type: ignore[arg-type]
         *(as_list(
             Bold(months[month].title()),
             *(Text(

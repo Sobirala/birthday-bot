@@ -1,4 +1,4 @@
-from typing import TypedDict, List
+from typing import List, TypedDict
 
 from aiogram import Bot
 from aiogram.types import (
@@ -6,10 +6,10 @@ from aiogram.types import (
     BotCommandScopeAllChatAdministrators,
     BotCommandScopeAllGroupChats,
     BotCommandScopeAllPrivateChats,
-    BotCommandScopeDefault,
     BotCommandScopeChat,
     BotCommandScopeChatAdministrators,
-    BotCommandScopeChatMember
+    BotCommandScopeChatMember,
+    BotCommandScopeDefault,
 )
 
 
