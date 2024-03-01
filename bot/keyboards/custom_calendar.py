@@ -19,7 +19,7 @@ from bot.enums import Language
 class WeekDay(Text):
     async def _render_text(self, data: Dict[str, Any], manager: DialogManager) -> str:
         selected_date: date = data["date"]
-        locale = data.get("locale", Language.UA)
+        locale = data.get("locale", Language.UK)
         return get_day_names(
             width="short", context='stand-alone', locale=locale,
         )[selected_date.weekday()].title()
@@ -28,7 +28,7 @@ class WeekDay(Text):
 class Month(Text):
     async def _render_text(self, data: Dict[str, Any], manager: DialogManager) -> str:
         selected_date: date = data["date"]
-        locale = data.get("locale", Language.UA)
+        locale = data.get("locale", Language.UK)
         return get_month_names(
             'wide', context='stand-alone', locale=locale,
         )[selected_date.month].title()

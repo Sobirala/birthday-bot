@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from typing import Any, Dict
 
+import pytz
 from aiogram import Bot, F
 from aiogram.enums import ChatMemberStatus, ContentType
 from aiogram.exceptions import TelegramForbiddenError, TelegramNotFound
@@ -71,7 +72,7 @@ class OnSelectGender(OnItemClick[Any, Gender]):
         await dialog_manager.next()
 
 
-async def get_confirm_birthday_data(dialog_manager: DialogManager, **kwargs: Any) -> Dict[str, Any]:
+async def get_confirm_birthday_data(dialog_manager: DialogManager, **_: Any) -> Dict[str, Any]:
     return {
         "birthday": datetime.strptime(dialog_manager.dialog_data["birthday"], "%d/%m/%Y"),
         "item": dialog_manager.dialog_data.get("gender")
@@ -79,7 +80,7 @@ async def get_confirm_birthday_data(dialog_manager: DialogManager, **kwargs: Any
 
 
 async def address_handler(message: Message, message_input: MessageInput, manager: DialogManager) -> None:
-    locale = manager.middleware_data.get("locale", Language.UA)
+    locale = manager.middleware_data.get("locale", Language.UK)
     i18n: I18nContext = manager.middleware_data["i18n"]
     async with GeoService() as api:
         address = await api.get_address(message.text, locale.replace("_", "-"))  # type: ignore[arg-type]
@@ -93,11 +94,11 @@ async def address_handler(message: Message, message_input: MessageInput, manager
 
 
 async def get_confirm_address_data(dialog_manager: DialogManager, **_: Any) -> Dict[str, Any]:
-    locale = dialog_manager.middleware_data.get("locale", Language.UA)
+    locale = dialog_manager.middleware_data.get("locale", Language.UK)
     return {
         "address": dialog_manager.dialog_data.get("address"),
         "now": format_datetime(
-            datetime=datetime.utcnow(),
+            datetime=datetime.now(pytz.UTC),
             format="dd MMMM, HH:mm",
             tzinfo=dialog_manager.dialog_data.get("timezone"),
             locale=locale
@@ -107,14 +108,13 @@ async def get_confirm_address_data(dialog_manager: DialogManager, **_: Any) -> D
 
 async def confirm_user(callback: CallbackQuery, widget: Button, manager: DialogManager) -> None:
     data = manager.dialog_data
-    locale = manager.middleware_data.get("locale", Language.UA)
+    manager.middleware_data.get("locale", Language.UK)
     uow: UnitOfWork = manager.middleware_data["uow"]
     bot: Bot = manager.middleware_data["bot"]
     info = {
         "fullname": callback.from_user.full_name,
         "gender": Gender(data["gender"]),
         "timezone": data["timezone"],
-        "language": locale,
         "birthday": datetime.strptime(data["birthday"], "%d/%m/%Y"),
     }
     result = {}

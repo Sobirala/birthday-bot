@@ -12,7 +12,6 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 from aiogram_dialog import setup_dialogs
 from aiogram_i18n import I18nMiddleware
 from aiogram_i18n.cores import FluentCompileCore
-from aiogram_i18n.managers import ConstManager
 from aiohttp import web
 from redis.asyncio import Redis
 from sqlalchemy import URL
@@ -29,6 +28,7 @@ from bot.routers import router
 from bot.services.scheduler import Scheduler
 from bot.settings import settings
 from bot.utils.logger import setup_logger
+from bot.utils.redis_manager import RedisManager
 
 engine = create_async_engine(
     URL.create(
@@ -51,10 +51,11 @@ redis: "Redis[Any]" = Redis(
 )
 
 core = FluentCompileCore(path="locales/{locale}/LC_MESSAGES")
+manager = RedisManager(redis, Language.UK)
 
 
 async def on_startup(bot: Bot) -> None:
-    scheduler = Scheduler(bot, async_session, core)
+    scheduler = Scheduler(bot, async_session, core, manager)
     scheduler.start()
     await bot.delete_webhook()
     await set_bot_commands(bot)
@@ -89,9 +90,9 @@ def main() -> None:
 
     i18n_middleware = I18nMiddleware(
         core=core,
-        manager=ConstManager(default_locale=Language.UA),
+        manager=manager,
         locale_key="locale",
-        default_locale=Language.UA
+        default_locale=Language.UK
     )
     i18n_middleware.setup(dp)
 

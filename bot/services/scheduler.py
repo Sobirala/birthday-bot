@@ -11,20 +11,22 @@ from structlog._config import BoundLoggerLazyProxy
 
 from bot.repositories.congratulation import CongratulationFilter
 from bot.repositories.uow import UnitOfWork
+from bot.utils.redis_manager import RedisManager
 
 
 class Scheduler:
-    def __init__(self, bot: Bot, async_session: async_sessionmaker[AsyncSession], i18n_core: FluentCompileCore):
+    def __init__(self, bot: Bot, async_session: async_sessionmaker[AsyncSession], i18n_core: FluentCompileCore, manager: RedisManager):
         self._bot = bot
         self._async_sessionmaker = async_session
         self._i18n_core = i18n_core
+        self._manager = manager
         self._scheduler = AsyncIOScheduler(timezone=pytz.UTC)
         self._logger = structlog.get_logger()
 
     def start(self) -> None:
         self._scheduler.add_job(self.today, 'cron', hour="*", minute="01", args=(self._bot, self._async_sessionmaker, self._logger))
-        self._scheduler.add_job(self.tomorrow, 'cron', hour="*", minute="01", args=(self._bot, self._async_sessionmaker, self._i18n_core, self._logger))
-        self._scheduler.add_job(self.next_5_day, 'cron', hour="*", minute="01", args=(self._bot, self._async_sessionmaker, self._i18n_core, self._logger))
+        self._scheduler.add_job(self.tomorrow, 'cron', hour="*", minute="01", args=(self._bot, self._async_sessionmaker, self._i18n_core, self._manager, self._logger))
+        self._scheduler.add_job(self.next_5_day, 'cron', hour="*", minute="01", args=(self._bot, self._async_sessionmaker, self._i18n_core, self._manager, self._logger))
         self._scheduler.start()
 
     @staticmethod
@@ -47,7 +49,7 @@ class Scheduler:
                                 await logger.aerror(f"Group with id {group.id} not found")
 
     @staticmethod
-    async def tomorrow(bot: Bot, async_session: async_sessionmaker[AsyncSession], i18n_core: FluentCompileCore, logger: BoundLoggerLazyProxy) -> None:
+    async def tomorrow(bot: Bot, async_session: async_sessionmaker[AsyncSession], i18n_core: FluentCompileCore, manager: RedisManager, logger: BoundLoggerLazyProxy) -> None:
         async with async_session() as session, session.begin():
             async with UnitOfWork(session) as uow:
                 tomorrow = await uow.users.get_birthday_persons(1)
@@ -58,16 +60,17 @@ class Scheduler:
                             try:
                                 chat_member = await bot.get_chat_member(group.id, birthday.id)
                                 photos = await chat_member.user.get_profile_photos(limit=1)
+                                locale = await manager.get_locale_by_user_id(user.id)
                                 caption = i18n_core.get(
                                     "birthday-tomorrow",
-                                    user.language,
+                                    locale,
                                     group=group.title,
                                     fullname=birthday.fullname,
                                     date=format_datetime(
                                         datetime=birthday.birthday,
                                         format="dd MMMM",
                                         tzinfo=get_timezone(user.timezone),
-                                        locale=Locale.parse(user.language, sep='-')
+                                        locale=Locale.parse(locale)
                                     )
                                 )
                                 if photos:
@@ -82,7 +85,7 @@ class Scheduler:
                                 await logger.error(f"User {user} not send")
 
     @staticmethod
-    async def next_5_day(bot: Bot, async_session: async_sessionmaker[AsyncSession], i18n_core: FluentCompileCore, logger: BoundLoggerLazyProxy) -> None:
+    async def next_5_day(bot: Bot, async_session: async_sessionmaker[AsyncSession], i18n_core: FluentCompileCore, manager: RedisManager, logger: BoundLoggerLazyProxy) -> None:
         async with async_session() as session, session.begin():
             async with UnitOfWork(session) as uow:
                 next_5_day = await uow.users.get_birthday_persons(5)
@@ -93,16 +96,17 @@ class Scheduler:
                             try:
                                 chat_member = await bot.get_chat_member(group.id, birthday.id)
                                 photos = await chat_member.user.get_profile_photos(limit=1)
+                                locale = await manager.get_locale_by_user_id(user.id)
                                 caption = i18n_core.get(
                                     "birthday-next-5-day",
-                                    user.language,
+                                    locale,
                                     group=group.title,
                                     fullname=birthday.fullname,
                                     date=format_datetime(
                                         datetime=birthday.birthday,
                                         format="dd MMMM",
                                         tzinfo=get_timezone(user.timezone),
-                                        locale=Locale.parse(user.language, sep='-')
+                                        locale=Locale.parse(locale)
                                     )
                                 )
                                 if photos:

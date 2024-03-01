@@ -1,7 +1,7 @@
 -male = чоловіча
 -female = жіноча
 
-gender-names = { $gender ->
+gender-names = { $item ->
         [male] { -male }
         [female] { -female }
         *[other] Не знайдено
@@ -50,12 +50,12 @@ group-new-member =
 
 
 private-start =
-    <b>Привіт { $fullname }! 👋</b>
-    Я відстежую дні народження у групових чатах та допомагаю готувати сюрпризи іменинникам.
+    <b>Hello { $fullname }! 👋</b>
+    I track birthdays in group chats and help prepare birthday surprises.
 
-    Додайте мене до будь-якої групи, використовуючи кнопку нижче 👇
+    Add me to any group using the button below 👇
 
-    Не турбуйтеся, мені не потрібно бути адміністратором у групі, і я не вмію читати листування 🙈
+    Don't worry, I don't need to be an admin in the group and I can't read mail 🙈
 
 private-help =
     Про Собіралу

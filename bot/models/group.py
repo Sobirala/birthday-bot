@@ -13,7 +13,7 @@ class Group(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     title: Mapped[str]
-    language: Mapped[Language] = mapped_column(default=Language.UA)
+    language: Mapped[Language] = mapped_column(default=Language.UK)
     collect: Mapped[bool] = mapped_column(default=False)
     users: Mapped[List["User"]] = relationship(
         secondary="usergrouplink",
