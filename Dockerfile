@@ -1,19 +1,17 @@
-ARG PYTHON=3.12-slim-bookworm
-# build stage
-FROM python:${PYTHON} AS builder
+FROM python:3.12 AS builder
 
-ENV PATH /opt/venv/bin:$PATH
-WORKDIR /opt
-RUN python -m venv venv
-RUN pip install poetry
+RUN apt-get update && apt-get install -y build-essential curl
+ENV VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
-COPY pyproject.toml poetry.lock ./
-
-RUN poetry config virtualenvs.create false
-RUN poetry install --no-interaction --no-root --only main
+ADD https://astral.sh/uv/install.sh /install.sh
+RUN chmod -R 655 /install.sh && /install.sh && rm /install.sh
+COPY ./requirements.txt .
+RUN /root/.cargo/bin/uv venv /opt/venv && \
+    /root/.cargo/bin/uv pip install --no-cache -r requirements.txt
 
 # run stage
-FROM python:${PYTHON}
+FROM python:3.12-slim-bookworm
 RUN apt-get update && apt-get install -y locales locales-all
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"

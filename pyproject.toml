@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Kulunchick <nikolikrasovski@gmail.com>"]
 readme = "README.md"
-packages = [{include = "birthday_bot"}]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
@@ -18,11 +18,11 @@ cachetools = "^5.3.3"
 alembic = "^1.13.1"
 sqlalchemy = "^2.0.27"
 asyncpg = "^0.29.0"
-fluent-compiler = "^1.0"
-aiogram-i18n = "^1.3.4"
+fluent-compiler = "^1.1"
+aiogram-i18n = "^1.4"
 tzfpy = "^0.15.3"
 aiogram-dialog = "^2.1.0"
-aiogram = "^3.4.1"
+aiogram = "^3.8.0"
 alembic-postgresql-enum = "^1.1.2"
 
 
