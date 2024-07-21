@@ -11,7 +11,7 @@ from bot.enums import Language
 class RedisManager(BaseManager):
     def __init__(
         self,
-        redis: Union["Redis[Any]", ConnectionPool],
+        redis: Union["Redis[Any]", "ConnectionPool[Any]"],
         default_locale: Optional[str] = None,
     ):
         super().__init__(default_locale=default_locale)

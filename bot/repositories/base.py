@@ -131,18 +131,18 @@ class BaseRepository(Generic[Model, Filter]):
 
     def _set_filter_with_additions(
             self,
-            query: Select[Tuple[Model]],
+            query: Select[Tuple[Any]],
             model_filter: Optional[Filter] = None,
             limit: Optional[int] = None,
             offset: Optional[int] = None,
             options: Optional[Sequence[ExecutableOption]] = None,
             order: Optional[Sequence[ColumnElement[Model]]] = None
-    ) -> Select[Tuple[Model]]:
+    ) -> Select[Tuple[Any]]:
         query = self._set_filter(query, model_filter)  # type: ignore[assignment]
         query = self._set_additions(query, limit, offset, options, order)
         return query
 
-    async def check_exists(self, model_filter: Filter) -> bool:
+    async def check_exists(self, model_filter: Filter) -> Optional[bool]:
         query = exists(self.__model__.id).select()
 
         query = self._set_filter_with_additions(query, model_filter, 1)

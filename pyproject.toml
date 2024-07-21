@@ -1,53 +1,55 @@
-[tool.poetry]
+[project]
 name = "birthday-bot"
 version = "0.1.0"
-description = ""
-authors = ["Kulunchick <nikolikrasovski@gmail.com>"]
+description = "Add your description here"
+authors = [
+    { name = "Kulunchick", email = "nikolikrasovski@gmail.com" }
+]
+dependencies = [
+    "aiogram>=3.8.0",
+    "structlog>=24.2.0",
+    "apscheduler>=3.10.4",
+    "geopy>=2.4.1",
+    "redis>=5.0.7",
+    "alembic>=1.13.2",
+    "sqlalchemy>=2.0.31",
+    "pydantic-settings>=2.3.4",
+    "cachetools>=5.3.3",
+    "asyncpg>=0.29.0",
+    "fluent-compiler>=1.1",
+    "aiogram-i18n>=1.4",
+    "tzfpy>=0.15.5",
+    "aiogram-dialog>=2.1.0",
+    "alembic-postgresql-enum>=1.2.0",
+    "uvloop>=0.19.0",
+]
 readme = "README.md"
-package-mode = false
-
-[tool.poetry.dependencies]
-python = ">=3.11,<4.0"
-uvloop = {version = "^0.19.0", platform = "linux"}
-structlog = "^24.1.0"
-apscheduler = "^3.10.4"
-geopy = "^2.4.1"
-redis = "^5.0.1"
-pydantic-settings = "^2.2.1"
-cachetools = "^5.3.3"
-alembic = "^1.13.1"
-sqlalchemy = "^2.0.27"
-asyncpg = "^0.29.0"
-fluent-compiler = "^1.1"
-aiogram-i18n = "^1.4"
-tzfpy = "^0.15.3"
-aiogram-dialog = "^2.1.0"
-aiogram = "^3.8.0"
-alembic-postgresql-enum = "^1.1.2"
-
-
-[tool.poetry.group.dev.dependencies]
-pre-commit = "^3.3.3"
-
-
-[tool.poetry.group.types.dependencies]
-mypy = "^1.8.0"
-types-redis = "^4.6.0.5"
-types-cachetools = "^5.3.0.6"
-types-pytz = "^2023.3.0.1"
-jinja2 = "^3.1.2"
-
-
-[tool.poetry.group.lint.dependencies]
-ruff = "^0.0.286"
-
+requires-python = ">= 3.8"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
+[tool.rye]
+managed = true
+virtual = true
+dev-dependencies = [
+    "pre-commit>=3.7.1",
+    "mypy>=1.10.1",
+    "ruff>=0.5.0",
+    "jinja2>=3.1.4",
+    "types-redis>=4.6.0.20240425",
+    "types-cachetools>=5.3.0.7",
+    "types-pytz>=2024.1.0.20240417",
+]
 
-[tool.ruff]
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/birthday_bot"]
+
+[tool.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings

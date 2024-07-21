@@ -3,21 +3,20 @@ name: Code check
 on: [push]
 
 jobs:
-  ruff:
+  code_check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Install Python and dependencies
         uses: ./.github/actions/install
-      - name: Run ruff and mypy
-        run: poetry run ruff bot --format github
-  mypy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Python and dependencies
-        uses: ./.github/actions/install
+      - name: Run ruff
+        run: ruff check bot --output-format github
       - name: Add mypy annotator
         uses: pr-annotators/mypy-pr-annotator@v1.0.0
+      - uses: actions/cache@v4
+        name: Define a cache for the mypy
+        with:
+          path: ./.mypy_cache
+          key: mypy-cache
       - name: Run mypy
-        run: poetry run mypy -p bot
+        run: mypy -p bot

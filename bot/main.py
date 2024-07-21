@@ -3,8 +3,8 @@ from typing import Any
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums.parse_mode import ParseMode
+from aiogram.fsm.storage.base import DefaultKeyBuilder
 from aiogram.fsm.storage.redis import (
-    DefaultKeyBuilder,
     RedisEventIsolation,
     RedisStorage,
 )
