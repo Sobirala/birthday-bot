@@ -29,5 +29,5 @@ jobs:
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/birthday-bot:dev
           platforms: linux/amd64,linux/arm64
-#          cache-from: type=gha,scope=${{ github.ref_name }}-image
-#          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-image
+          cache-from: type=gha,scope=${{ github.ref_name }}-image
+          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-image
